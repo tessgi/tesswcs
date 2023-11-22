@@ -1,0 +1,34 @@
+site_name: tesswcs
+nav:
+    - Home: README.md
+theme:
+  name: "material"
+  icon:
+      logo: material/globe-model
+  palette:
+    scheme: default
+    primary: red
+    accent: blue
+repo_url: https://github.com/christinahedges/tesswcs
+plugins:
+  - search
+  - mkdocs-jupyter:
+      execute: False
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          selection:
+            docstring_style: "numpy"
+          rendering:
+            show_source: false
+      watch:
+        - src/scatterbrain
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
