@@ -2,7 +2,7 @@
 [![PyPI version](https://badge.fury.io/py/tesswcs.svg)](https://badge.fury.io/py/tesswcs)
 
 <p align="center">
-  <img src="https://github.com/christinahedges/tesswcs/blob/main/logo.png?raw=true" width="350" alt="tesswcs logo">
+  <img src="https://github.com/christinahedges/tesswcs/blob/main/docs/images/logo.png?raw=true" width="350" alt="tesswcs logo">
 </p>
 
 # tesswcs
