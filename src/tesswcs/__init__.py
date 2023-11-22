@@ -16,7 +16,7 @@ log.addHandler(RichHandler(markup=True))
 import numpy as np  # noqa: E402
 from astropy.table import Table  # noqa: E402
 
-pointings = Table.read("/Users/chedges/repos/tesswcs/src/tesswcs/data/pointings.csv")
+pointings = Table.read(f"{PACKAGEDIR}data/pointings.csv")
 
 # Real rows and columns in a CCD
 rrows, rcolumns = (2078, 2136)
