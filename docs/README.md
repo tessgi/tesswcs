@@ -24,7 +24,7 @@ Below is an example of how to obtain a WCS for archival data
 ```python
 import tesswcs
 
-wcs = tesswcs.wcs(sector=1, camera=1, ccd=1)
+wcs = tesswcs.WCS.from_archive(sector=1, camera=1, ccd=1)
 ```
 
 Using `astropy`'s WCS interface you can now either work with this object, for example you can obtain the sky position of row and column positions
@@ -46,3 +46,11 @@ You can also save these objects to fits files
 wcs.to_fits('wcs.fits')
 ```
 
+
+If you have a RA, Dec and roll in degrees you can also predict a WCS
+
+```python
+import tesswcs
+
+wcs = tesswcs.WCS.predict(ra=0, dec=0, roll=0, camera=1, ccd=1)
+```
