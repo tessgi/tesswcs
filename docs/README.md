@@ -46,7 +46,6 @@ You can also save these objects to fits files
 wcs.to_fits('wcs.fits')
 ```
 
-
 If you have a RA, Dec and roll in degrees you can also predict a WCS
 
 ```python
@@ -54,3 +53,7 @@ import tesswcs
 
 wcs = tesswcs.WCS.predict(ra=0, dec=0, roll=0, camera=1, ccd=1)
 ```
+
+You can use tesswcs to better understand what sources will be obervable on TESS pixels, or to make figures like the ones below!
+
+![Figure showing the predicted TESS WCS](figures/tess_1_predict.png)
