@@ -40,13 +40,6 @@ jobs:
       run: |
         make pytest
 
-    - name: Deploy website
-      env:
-          GITHUB_TOKEN: ${{ secrets.ACTION_PAT }}    
-      if: github.ref == 'refs/heads/main'
-      run: |
-        make deploy
-
     - name: Publish to PyPI
       if: startsWith(github.ref, 'refs/tags/')
       uses: pypa/gh-action-pypi-publish@v1.4.2
