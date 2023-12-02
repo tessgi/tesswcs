@@ -8,7 +8,7 @@ from astropy.io import fits
 from astropy.wcs import WCS as astropyWCS
 from tqdm import tqdm
 
-from tesswcs import PACKAGEDIR, WCS, __version__, pointings, rcolumns, rrows
+from tesswcs import PACKAGEDIR, WCS, pointings, rcolumns, rrows
 from tesswcs.utils import (
     _build_support_dicts,
     _load_support_dicts,
@@ -23,7 +23,6 @@ DOCSDIR = "/".join([*PACKAGEDIR.split("/")[:-2], "docs"])
 
 
 def test_install():
-    assert __version__ == "1.0.0"
     assert os.path.isfile(f"{PACKAGEDIR}/data/TESS_wcs_data.json.bz2")
     # can read dictionaries
     _wcs_dicts = _load_wcs_data()

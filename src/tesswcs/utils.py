@@ -65,7 +65,7 @@ def _build_wcs_data():
         raise ImportError("Must have `tessrip` installed to build the wcs dictionary.")
 
     sep_dicts = {}
-    for sector, ra, dec, roll, start, end in pointings.iterrows():
+    for cycle, sector, ra, dec, roll, start, end in pointings.iterrows():
         sector = int(sector)
         sep_dicts[sector] = {}
         sep_dicts[sector] = {"ra": ra, "dec": dec, "roll": roll}

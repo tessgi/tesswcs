@@ -12,6 +12,7 @@ astropy = "^5.3.4"
 rich = "^13.7.0"
 tqdm = "^4.66.1"
 matplotlib = "^3.8.2"
+toml = "^0.10.2"
 
 [tool.poetry.group.dev.dependencies]
 mkdocs = "^1.5.3"

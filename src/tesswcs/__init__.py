@@ -1,8 +1,21 @@
-__version__ = "1.0.0"
 # Standard library
 import os  # noqa
 
+import toml  # noqa
+
 PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
+
+# Read the pyproject.toml file
+with open(
+    os.path.join("/".join(PACKAGEDIR.split("/")[:-2]), "pyproject.toml"), "r"
+) as pyproject:
+    file_contents = pyproject.read()
+
+# Parse the file contents
+parsed_toml = toml.loads(file_contents)
+
+# Set the version
+__version__ = parsed_toml["tool"]["poetry"]["version"]
 
 # Standard library
 import logging  # noqa: E402
