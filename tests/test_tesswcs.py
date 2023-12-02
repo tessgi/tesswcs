@@ -23,7 +23,7 @@ DOCSDIR = "/".join([*PACKAGEDIR.split("/")[:-2], "docs"])
 
 
 def test_install():
-    assert __version__ == "0.1.0"
+    assert __version__ == "1.0.0"
     assert os.path.isfile(f"{PACKAGEDIR}/data/TESS_wcs_data.json.bz2")
     # can read dictionaries
     _wcs_dicts = _load_wcs_data()
