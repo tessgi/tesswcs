@@ -1,13 +1,29 @@
 """Work with WCS objects for TESS"""
+import bz2
+import json
+
 import astropy.units as u
 import numpy as np
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
+from astropy.io import fits
 from astropy.wcs import WCS as astropyWCS
 from astropy.wcs import Sip
-from astropy.io import fits
+from tqdm import tqdm
 
-from . import pixel_corners, rcolumns, rrows
-from .utils import _load_support_dicts, _load_wcs_data, angle_to_matrix, get_M
+from . import (
+    PACKAGEDIR,
+    Ms,
+    pixel_corners,
+    rcolumns,
+    rrows,
+    sip_dict,
+    wcs_dicts,
+    xcent,
+    xs,
+    ycent,
+    ys,
+)
+from .utils import angle_to_matrix, get_M
 
 # from . import pointings  # noqa: E402
 
@@ -21,79 +37,46 @@ class WCS(astropyWCS):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def _load_support_dicts(self):
-        (
-            self._xs,
-            self._ys,
-            self._xcent,
-            self._ycent,
-            self._sip_dict,
-        ) = _load_support_dicts()
-
-    def _load_wcs_data(self):
-        self._wcs_dicts = _load_wcs_data()
-
-    @property
-    def wcs_dicts(self):
-        if not hasattr(self, "_wcs_dicts"):
-            self._load_wcs_data()
-        return self._wcs_dicts
-
-    @property
-    def xs(self):
-        if not hasattr(self, "_xs"):
-            self._load_support_dicts()
-        return self._xs
-
-    @property
-    def ys(self):
-        if not hasattr(self, "_ys"):
-            self._load_support_dicts()
-        return self._ys
-
-    @property
-    def xcent(self):
-        if not hasattr(self, "_xcent"):
-            self._load_support_dicts()
-        return self._xcent
-
-    @property
-    def ycent(self):
-        if not hasattr(self, "_ycent"):
-            self._load_support_dicts()
-        return self._ycent
-
-    @property
-    def sip_dict(self):
-        if not hasattr(self, "_sip"):
-            self._load_support_dicts()
-        return self._sip_dict
-
     @classmethod
     def from_archive(cls, sector: int, camera: int, ccd: int):
         """Load a WCS from archival TESS data"""
         wcs = cls(naxis=2)
         wcs.sector, wcs.camera, wcs.ccd = sector, camera, ccd
-        wcs.ra = wcs.wcs_dicts[sector]["ra"]
-        wcs.dec = wcs.wcs_dicts[sector]["dec"]
-        wcs.roll = wcs.wcs_dicts[sector]["roll"]
+        wcs.ra = wcs_dicts[sector]["ra"]
+        wcs.dec = wcs_dicts[sector]["dec"]
+        wcs.roll = wcs_dicts[sector]["roll"]
 
         wcs.wcs.ctype = ["RA---TAN-SIP", "DEC--TAN-SIP"]
         wcs.wcs.cunit = ["deg", "deg"]
         wcs.wcs.radesys = "ICRS"
-        wcs.wcs.crpix = wcs.wcs_dicts[sector][camera][ccd]["crpix0"]
-        wcs.wcs.crval = wcs.wcs_dicts[sector][camera][ccd]["crval0"]
+        wcs.wcs.crpix = wcs_dicts[sector][camera][ccd]["crpix0"]
+        wcs.wcs.crval = wcs_dicts[sector][camera][ccd]["crval0"]
         wcs.wcs.cdelt = [1, 1]
-        wcs.wcs.pc = wcs.wcs_dicts[sector][camera][ccd]["cd"]
+        wcs.wcs.pc = wcs_dicts[sector][camera][ccd]["cd"]
         wcs.sip = Sip(
-            *[wcs.sip_dict[attr][camera][ccd] for attr in ["a", "b", "ap", "bp"]],
-            [1045, 1001]
+            *[sip_dict[attr][camera][ccd] for attr in ["a", "b", "ap", "bp"]],
+            [1045, 1001],
         )
         return wcs
 
     @classmethod
-    def predict(cls, ra: float, dec: float, roll: float, camera: int, ccd: int):
-        """Predict a WCS based on RA, Dec and roll"""
+    def predict(
+        cls,
+        ra: float,
+        dec: float,
+        roll: float,
+        camera: int,
+        ccd: int,
+        warp: bool = True,
+    ):
+        """Predict a WCS based on RA, Dec and roll
+
+
+        warp : bool
+            Whether to warp by the best fit TESS Camera/CCD warp. This is recommended,
+            otherwise solution will be off by up to 10 pixels. This must be switched off
+            if fitting for the warp.
+        """
         if (ccd == 1) | (ccd == 3):
             C = np.asarray([[1, -1], [-1, 1]])
         elif (ccd == 2) | (ccd == 4):
@@ -107,7 +90,7 @@ class WCS(astropyWCS):
         wcs.ra, wcs.dec, wcs.roll, wcs.camera, wcs.ccd = ra, dec, roll, camera, ccd
 
         # center of the CCD
-        xc, yc = wcs.xcent[camera][ccd], wcs.ycent[camera][ccd]
+        xc, yc = xcent[camera][ccd], ycent[camera][ccd]
         r, phi = np.hypot(xc, yc) * u.deg, np.arctan2(yc, xc) * u.rad
         c_ccd = c_boresight.directional_offset_by(
             position_angle=phi - roll * u.deg, separation=r
@@ -116,16 +99,17 @@ class WCS(astropyWCS):
         wcs.wcs.ctype = ["RA---TAN-SIP", "DEC--TAN-SIP"]
         wcs.wcs.cunit = ["deg", "deg"]
         wcs.wcs.radesys = "ICRS"
-        wcs.wcs.crpix = np.asarray([rrows / 2, rcolumns / 2])
+        #        wcs.wcs.crpix = np.asarray([rrows / 2, rcolumns / 2])
+        wcs.wcs.crpix = np.asarray([1045, 1001])
         wcs.wcs.cdelt = [-1, 1]
         # center is the ccd center in world space
         wcs.wcs.crval = [c_ccd.ra.deg, c_ccd.dec.deg]
         wcs.sip = Sip(
-            *[wcs.sip_dict[attr][camera][ccd] for attr in ["a", "b", "ap", "bp"]],
-            [1045, 1001]
+            *[sip_dict[attr][camera][ccd] for attr in ["a", "b", "ap", "bp"]],
+            [1045, 1001],
         )
         # rotate the corners of the CCD to the correct roll
-        x, y = R.dot(np.vstack([wcs.xs[camera][ccd], wcs.ys[camera][ccd]]))
+        x, y = R.dot(np.vstack([xs[camera][ccd], ys[camera][ccd]]))
         r, phi = np.hypot(x, y) * u.deg, np.arctan2(y, x) * u.rad
 
         # positions of the corners in world space
@@ -136,9 +120,7 @@ class WCS(astropyWCS):
         truth = np.asarray([r * np.cos(phi), r * np.sin(phi)])
 
         # Our estimate of where the corners should in world space
-        c = wcs.pixel_to_world(
-            *(pixel_corners + np.asarray([rrows / 2, rcolumns / 2])[:, None])
-        )
+        c = wcs.pixel_to_world(*pixel_corners.T)
         r, phi = c_ccd.separation(c), c_ccd.position_angle(c)
         # Our estimate of where the corners should in detector space
         approx = np.asarray([r * np.cos(phi), r * np.sin(phi)])
@@ -148,12 +130,9 @@ class WCS(astropyWCS):
         wcs.wcs.pc = matrix.dot(angle_to_matrix(180)).dot(
             np.asarray([[0.0593726, 0.00123252], [0.00123252, 0.0593726]]) * (C)
         )
-
-        if (ccd == 1) | (ccd == 3):
-            C = np.asarray([[1, -1], [-1, 1]])
-        elif (ccd == 2) | (ccd == 4):
-            C = np.asarray([[1, 1], [1, 1]])
-
+        if warp:
+            wcs.wcs.pc = wcs.wcs.pc.dot(Ms[camera][ccd][:2, :2])
+            wcs.wcs.crpix += Ms[camera][ccd][:2, 2]
         return wcs
 
     def to_header(self, key=None):
@@ -172,3 +151,97 @@ class WCS(astropyWCS):
             if hasattr(self, attr):
                 hdr[attr] = getattr(self, attr)
         return hdr
+
+
+def _build_warp_matrices():
+    R, C = np.meshgrid(
+        np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
+    )
+
+    Ms = {
+        1: {1: [], 2: [], 3: [], 4: []},
+        2: {1: [], 2: [], 3: [], 4: []},
+        3: {1: [], 2: [], 3: [], 4: []},
+        4: {1: [], 2: [], 3: [], 4: []},
+    }
+
+    for sector in tqdm(np.arange(1, 14)):
+        # fig, ax = plt.subplots(4, 4, figsize=(10, 10))
+        for camera in np.arange(1, 5):
+            for ccd in np.arange(1, 5):
+                wcs_t = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
+                truth = wcs_t.wcs_pix2world(np.asarray([R.ravel(), C.ravel()]).T, 0)
+
+                wcs_c = WCS.predict(
+                    ra=wcs_t.ra,
+                    dec=wcs_t.dec,
+                    roll=wcs_t.roll,
+                    camera=wcs_t.camera,
+                    ccd=wcs_t.ccd,
+                )
+                prediction = wcs_c.wcs_pix2world(
+                    np.asarray([R.ravel(), C.ravel()]).T, 0
+                )
+
+                if (wcs_t.wcs.crval[0] > 90) & (wcs_t.wcs.crval[0] < 270):
+                    wrap = 360 * u.deg
+                else:
+                    wrap = 180 * u.deg
+                truth = np.asarray(
+                    [Angle(truth[:, 0] * u.deg).wrap_at(wrap).deg, truth[:, 1]]
+                ).T
+                prediction = np.asarray(
+                    [
+                        Angle(prediction[:, 0] * u.deg).wrap_at(wrap).deg,
+                        prediction[:, 1],
+                    ]
+                ).T
+
+                M = get_M(truth, prediction)
+                transformation = M.dot(
+                    np.asarray(
+                        [prediction[:, 0], prediction[:, 1], prediction[:, 0] ** 0]
+                    )
+                )[:2].T
+                pix = wcs_c.wcs_world2pix(transformation, 0)
+                M2 = np.linalg.inv(get_M(np.asarray([R.ravel(), C.ravel()]).T, pix))
+
+                wcs_c.wcs.pc = wcs_c.wcs.pc.dot(M2[:2, :2])
+                prediction = wcs_c.wcs_pix2world(
+                    np.asarray([R.ravel(), C.ravel()]).T, 0
+                )
+                prediction = np.asarray(
+                    [
+                        Angle(prediction[:, 0] * u.deg).wrap_at(wrap).deg,
+                        prediction[:, 1],
+                    ]
+                ).T
+                M2[:2, 2] = (
+                    wcs_c.wcs_world2pix([prediction.mean(axis=0)], 0)[0]
+                    - wcs_c.wcs_world2pix([truth.mean(axis=0)], 0)[0]
+                )
+
+                wcs_c.wcs.crpix += M2[:2, 2]
+
+                prediction = wcs_c.wcs_pix2world(
+                    np.asarray([R.ravel(), C.ravel()]).T, 0
+                )
+                prediction = np.asarray(
+                    [
+                        Angle(prediction[:, 0] * u.deg).wrap_at(wrap).deg,
+                        prediction[:, 1],
+                    ]
+                ).T
+
+                # sep = np.hypot(*(truth - prediction).T).reshape(R.shape)
+                # ax[camera-1][ccd-1].pcolormesh(R, C, sep, vmin=0, vmax=3*21/3600)
+                Ms[camera][ccd].append(M2.copy())
+
+    for camera in np.arange(1, 5):
+        for ccd in np.arange(1, 5):
+            Ms[int(camera)][int(ccd)] = np.median(Ms[camera][ccd], axis=0).tolist()
+
+    filename = f"{PACKAGEDIR}/data/TESS_wcs_Ms.json.bz2"
+    json_data = json.dumps(Ms)
+    with bz2.open(filename, "wt", encoding="utf-8") as f:
+        f.write(json_data)

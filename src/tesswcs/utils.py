@@ -1,6 +1,7 @@
 """Utilities for getting WCS"""
 import bz2
 import json
+import os
 
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -8,7 +9,7 @@ import numpy as np
 from astropy.coordinates import Angle, SkyCoord
 from tqdm import tqdm
 
-from . import PACKAGEDIR, log, pixel_scale, pointings, rcolumns, rrows
+from . import PACKAGEDIR, log, pixel_corners, pixel_scale, pointings, rcolumns, rrows
 
 
 def angle_to_matrix(theta):
@@ -78,8 +79,9 @@ def _build_wcs_data():
             for ccd in np.arange(1, 5):
                 wcss.append(Rip(sector, cam, ccd).wcs)
             for idx in range(4):
+                crpix = [1045, 1001]
                 crval = SkyCoord(
-                    *wcss[idx].wcs_pix2world([[rrows / 2, rcolumns / 2]], 0)[0],
+                    *wcss[idx].wcs_pix2world([crpix], 0)[0],
                     unit="deg",
                 )
                 sep = c0.separation(crval)
@@ -88,11 +90,21 @@ def _build_wcs_data():
                 # phi = pa.rad
                 # x, y = r * np.cos(phi), r * np.sin(phi)
 
+                crval_sip = SkyCoord(
+                    *wcss[idx].all_pix2world([crpix], 0)[0],
+                    unit="deg",
+                )
+                sep_sip = c0.separation(crval_sip)
+                pa_sip = c0.position_angle(crval_sip)
+
                 sep_dicts[sector][cam][idx + 1] = {
                     "pa": pa.rad,
                     "sep": sep.deg,
+                    "pa_sip": pa_sip.rad,
+                    "sep_sip": sep_sip.deg,
                     "ccd_center_crval": [crval.ra.deg, crval.dec.deg],
-                    "ccd_center_crpix": [rrows / 2, rcolumns / 2],
+                    "ccd_center_crval_sip": [crval_sip.ra.deg, crval_sip.dec.deg],
+                    "ccd_center_crpix": crpix,
                     "crval0": list(wcss[idx].wcs.crval),
                     "crpix0": list(wcss[idx].wcs.crpix),
                     "cd": [list(wcss[idx].wcs.cd[jdx]) for jdx in range(2)],
@@ -137,7 +149,34 @@ def _build_wcs_data():
                 )
                 sep_dicts[sector][cam][idx + 1]["corner_ra"] = list(corners.ra.deg)
                 sep_dicts[sector][cam][idx + 1]["corner_dec"] = list(corners.dec.deg)
-    filename = f"{PACKAGEDIR}/TESS_wcs_data.json.bz2"
+
+                corners = SkyCoord(
+                    [
+                        SkyCoord(*wcss[idx].all_pix2world([[0, 0]], 0)[0], unit="deg"),
+                        SkyCoord(
+                            *wcss[idx].all_pix2world([[0, rcolumns]], 0)[0], unit="deg"
+                        ),
+                        SkyCoord(
+                            *wcss[idx].all_pix2world([[rrows, 0]], 0)[0], unit="deg"
+                        ),
+                        SkyCoord(
+                            *wcss[idx].all_pix2world([[rrows, rcolumns]], 0)[0],
+                            unit="deg",
+                        ),
+                    ]
+                )
+                sep_dicts[sector][cam][idx + 1]["corner_sip_pa"] = list(
+                    c0.position_angle(corners).rad
+                )
+                sep_dicts[sector][cam][idx + 1]["corner_sip_sep"] = list(
+                    c0.separation(corners).deg
+                )
+                sep_dicts[sector][cam][idx + 1]["corner_sip_ra"] = list(corners.ra.deg)
+                sep_dicts[sector][cam][idx + 1]["corner_sip_dec"] = list(
+                    corners.dec.deg
+                )
+
+    filename = f"{PACKAGEDIR}/data/TESS_wcs_data.json.bz2"
     json_data = json.dumps(sep_dicts)
     with bz2.open(filename, "wt", encoding="utf-8") as f:
         f.write(json_data)
@@ -162,8 +201,13 @@ def _load_wcs_data():
                 _wcs_dicts[int(sector)][int(camera)][int(ccd)] = {
                     "pa": Angle(wcs_dict[sector][camera][ccd]["pa"] * u.rad),
                     "sep": Angle(wcs_dict[sector][camera][ccd]["sep"] * u.deg),
+                    "pa_sip": Angle(wcs_dict[sector][camera][ccd]["pa_sip"] * u.rad),
+                    "sep_sip": Angle(wcs_dict[sector][camera][ccd]["sep_sip"] * u.deg),
                     "ccd_center_crval": wcs_dict[sector][camera][ccd][
                         "ccd_center_crval"
+                    ],
+                    "ccd_center_crval_sip": wcs_dict[sector][camera][ccd][
+                        "ccd_center_crval_sip"
                     ],
                     "ccd_center_crpix": wcs_dict[sector][camera][ccd][
                         "ccd_center_crpix"
@@ -185,6 +229,17 @@ def _load_wcs_data():
                     "corner": SkyCoord(
                         wcs_dict[sector][camera][ccd]["corner_ra"],
                         wcs_dict[sector][camera][ccd]["corner_dec"],
+                        unit="deg",
+                    ),
+                    "corner_sip_pa": Angle(
+                        wcs_dict[sector][camera][ccd]["corner_pa"] * u.rad
+                    ),
+                    "corner_sip_sep": Angle(
+                        wcs_dict[sector][camera][ccd]["corner_sep"] * u.deg
+                    ),
+                    "corner_sip": SkyCoord(
+                        wcs_dict[sector][camera][ccd]["corner_sip_ra"],
+                        wcs_dict[sector][camera][ccd]["corner_sip_dec"],
                         unit="deg",
                     ),
                 }
@@ -248,6 +303,8 @@ def _build_support_dicts():
             ys[int(camera)][int(ccd)] = list(
                 np.mean(ys[camera][ccd], axis=0)
             )  # / pixel_scale
+
+            # This needs to be the crpix of the camera
             xcent[int(camera)][int(ccd)] = np.mean(xcent[camera][ccd])  # / pixel_scale
             ycent[int(camera)][int(ccd)] = np.mean(ycent[camera][ccd])  # / pixel_scale
     log.debug("Building SIP data.")
@@ -267,48 +324,73 @@ def _build_support_dicts():
             }
             for camera in np.arange(1, 5)
         }
-    for var in ["xs", "ys", "xcent", "ycent", "sip"]:
-        filename = f"{PACKAGEDIR}/TESS_wcs_{var}.json.bz2"
+    M = {1: {}, 2: {}, 3: {}, 4: {}}
+    for camera in np.arange(1, 5):
+        for ccd in np.arange(1, 5):
+            truth = np.asarray(
+                [
+                    xs[camera][ccd] - xcent[camera][ccd],
+                    ys[camera][ccd] - ycent[camera][ccd],
+                ]
+            )
+            approx = ((pixel_corners - [1045, 1001])).T
+            M[int(camera)][int(ccd)] = get_M(truth.T, approx.T).tolist()
+
+    for var in ["xs", "ys", "xcent", "ycent", "sip", "M"]:
+        filename = f"{PACKAGEDIR}/data/TESS_wcs_{var}.json.bz2"
         json_data = json.dumps(locals()[var])
         with bz2.open(filename, "wt", encoding="utf-8") as f:
             f.write(json_data)
     return
 
 
+def _fix_keys(dict):
+    return {
+        int(key): np.asarray(item) if isinstance(item, list) else item
+        for key, item in dict.items()
+    }
+
+
 def _load_support_dicts():
     log.debug("Loading support dictionaries from file")
 
-    def fix_keys(dict):
-        return {
-            int(key): np.asarray(item) if isinstance(item, list) else item
-            for key, item in dict.items()
-        }
-
     support_dicts = []
 
-    for var in ["xs", "ys", "xcent", "ycent"]:
-        filename = f"{PACKAGEDIR}/TESS_wcs_{var}.json.bz2"
+    for var in ["xs", "ys", "xcent", "ycent", "M"]:
+        filename = f"{PACKAGEDIR}/data/TESS_wcs_{var}.json.bz2"
         with bz2.open(filename, "rt", encoding="utf-8") as f:
             support_dict = json.load(f)
-        support_dict = {int(key): fix_keys(dict) for key, dict in support_dict.items()}
+        support_dict = {int(key): _fix_keys(dict) for key, dict in support_dict.items()}
         support_dicts.append(support_dict)
 
-    filename = f"{PACKAGEDIR}/TESS_wcs_sip.json.bz2"
+    filename = f"{PACKAGEDIR}/data/TESS_wcs_sip.json.bz2"
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         sip = json.load(f)
     sip_dict = {
-        key: fix_keys({int(key): fix_keys(dict) for key, dict in sip_dict.items()})
+        key: _fix_keys({int(key): _fix_keys(dict) for key, dict in sip_dict.items()})
         for key, sip_dict in sip.items()
     }
     support_dicts.append(sip_dict)
     return support_dicts
 
 
+def _load_warp_matrices():
+    log.debug("Loading warp matrices dictionary from file")
+    filename = f"{PACKAGEDIR}/data/TESS_wcs_Ms.json.bz2"
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(
+            "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
+        )
+    with bz2.open(filename, "rt", encoding="utf-8") as f:
+        Ms = json.load(f)
+    return {int(key): _fix_keys(dict) for key, dict in Ms.items()}
+
+
 def plot_geometry(ax=None):
     # This lets us reorganize four coordinate corners to plot a square
     s = [0, 1, 3, 2, 0]
 
-    xs, ys, xcent, ycent, _ = _load_support_dicts()
+    xs, ys, xcent, ycent, M, _ = _load_support_dicts()
     if ax is None:
         _, ax = plt.subplots(1, 1, figsize=(5, 5))
     for camera in np.arange(1, 5):

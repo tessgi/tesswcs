@@ -4,8 +4,9 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from astropy.wcs import WCS as astropyWCS
 from astropy.io import fits
+from astropy.wcs import WCS as astropyWCS
+from tqdm import tqdm
 
 from tesswcs import PACKAGEDIR, WCS, __version__, pointings, rcolumns, rrows
 from tesswcs.utils import (
@@ -26,7 +27,7 @@ def test_install():
     assert os.path.isfile(f"{PACKAGEDIR}/data/TESS_wcs_data.json.bz2")
     # can read dictionaries
     _wcs_dicts = _load_wcs_data()
-    xs, ys, xcent, ycent, sip = _load_support_dicts()
+    xs, ys, xcent, ycent, M, sip = _load_support_dicts()
     # dictionaries have data
     assert "a" in sip.keys()
     for dict in [_wcs_dicts, xs, ys, xcent, ycent, sip["a"]]:
@@ -149,3 +150,58 @@ def test_write():
     assert "AUTHOR" in hdr_string
     hdu = wcs.to_fits()
     assert "AUTHOR" in hdu[0].header
+
+
+def test_comprable():
+    sector, camera, ccd = 4, 1, 1
+    R, C = np.meshgrid(
+        np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
+    )
+    wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
+    truth = wcs.pixel_to_world(R.ravel(), C.ravel())
+    prediction = WCS.predict(
+        ra=wcs.ra, dec=wcs.dec, roll=wcs.roll, camera=wcs.camera, ccd=wcs.ccd
+    ).pixel_to_world(R.ravel(), C.ravel())
+    separation = (
+        (truth.separation(prediction).to(u.arcsecond) / (21 * u.arcsecond))
+        .reshape(R.shape)
+        .value
+    )
+
+    fig, ax = plt.subplots()
+    im = ax.pcolormesh(C[0], R[:, 0], separation, vmin=0, vmax=0.5)
+    ax.set(
+        xlabel="Column",
+        ylabel="Row",
+        title=f"Sector {sector}, Camera {camera}, CCD {ccd}",
+    )
+    cbar = plt.colorbar(im, ax=ax)
+    cbar.set_label("Separation between true position and predicted position [pixels]")
+    fig.savefig(
+        f"{DOCSDIR}/figures/tess_{sector}_separation.png",
+        bbox_inches="tight",
+        dpi=150,
+    )
+
+    # Check all C1 sector, camera, ccd predictions are within half a pixel of the truth
+    for sector in tqdm(np.arange(1, 14), desc="sector", leave=True, position=0):
+        for camera in np.arange(1, 5):
+            for ccd in np.arange(1, 5):
+                R, C = np.meshgrid(
+                    np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
+                )
+                wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
+                truth = wcs.pixel_to_world(R.ravel(), C.ravel())
+                prediction = WCS.predict(
+                    ra=wcs.ra,
+                    dec=wcs.dec,
+                    roll=wcs.roll,
+                    camera=wcs.camera,
+                    ccd=wcs.ccd,
+                ).pixel_to_world(R.ravel(), C.ravel())
+                separation = (
+                    (truth.separation(prediction).to(u.arcsecond) / (21 * u.arcsecond))
+                    .reshape(R.shape)
+                    .value
+                )
+                assert (separation < 0.5).all()

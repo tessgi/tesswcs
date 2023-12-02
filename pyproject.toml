@@ -24,6 +24,7 @@ black = "^23.11.0"
 isort = "^5.12.0"
 flake8 = "^6.1.0"
 mkdocs-jupyter = "^0.24.6"
+jupyterlab = "^4.0.9"
 
 [build-system]
 requires = ["poetry-core"]

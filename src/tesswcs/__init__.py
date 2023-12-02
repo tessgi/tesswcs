@@ -31,17 +31,30 @@ pixel_scale = 21 / 3600
 cdelt = {1: [-1, 1], 2: [-1, 1], 3: [1, -1], 4: [1, -1]}
 
 # This sets up the corners of each CCD
-pixel_corners = (
-    np.array(
-        [
-            [0, 0],  # Bottom left
-            [0, 1],  # Top left
-            [1, 0],  # Bottom right
-            [1, 1],  # Top right
-        ]
-    )
-    * np.asarray((rrows, rcolumns))
-) - np.asarray((rrows, rcolumns)) / 2
+pixel_corners = np.array(
+    [
+        [0, 0],  # Bottom left
+        [0, 1],  # Top left
+        [1, 0],  # Bottom right
+        [1, 1],  # Top right
+    ]
+) * np.asarray((rrows, rcolumns))
 
-pixel_corners = pixel_corners.T
+from .utils import _load_support_dicts  # noqa: E402, F401
+from .utils import _load_warp_matrices  # noqa: E402, F401
+from .utils import _load_wcs_data  # noqa: E402, F401
+
+wcs_dicts = _load_wcs_data()
+
+(
+    xs,
+    ys,
+    xcent,
+    ycent,
+    M,
+    sip_dict,
+) = _load_support_dicts()
+
+Ms = _load_warp_matrices()
+
 from .tesswcs import WCS  # noqa: E402, F401
