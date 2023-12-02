@@ -1,7 +1,7 @@
+<a href="https://github.com/christinahedges/tesswcs/actions/workflows/tests.yml"><img src="https://github.com/christinahedges/tesswcs/workflows/pytest/badge.svg" alt="Test status"/></a> [![Generic badge](https://img.shields.io/badge/documentation-live-blue.svg)](https://christinahedges.github.io/tesswcs/)
+[![PyPI version](https://badge.fury.io/py/tesswcs.svg)](https://badge.fury.io/py/tesswcs)
+
 <p align="center">
-  <a href="https://github.com/christinahedges/tesswcs/actions/workflows/tests.yml"><img src="https://github.com/christinahedges/tesswcs/workflows/pytest/badge.svg" alt="Test status"/></a>[![Generic badge](https://img.shields.io/badge/documentation-live-blue.svg)](https://christinahedges.github.io/tesswcs/)[![PyPI version](https://badge.fury.io/py/tesswcs.svg)](https://badge.fury.io/py/tesswcs)
-
-
   <img src="https://github.com/christinahedges/tesswcs/blob/main/docs/images/logo.png?raw=true" width="350" alt="tesswcs logo">
 </p>
 
