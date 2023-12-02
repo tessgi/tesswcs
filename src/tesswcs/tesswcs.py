@@ -45,7 +45,7 @@ class WCS(astropyWCS):
         wcs.ra = wcs_dicts[sector]["ra"]
         wcs.dec = wcs_dicts[sector]["dec"]
         wcs.roll = wcs_dicts[sector]["roll"]
-
+        wcs.pixel_shape = (rrows, rcolumns)
         wcs.wcs.ctype = ["RA---TAN-SIP", "DEC--TAN-SIP"]
         wcs.wcs.cunit = ["deg", "deg"]
         wcs.wcs.radesys = "ICRS"
@@ -88,6 +88,7 @@ class WCS(astropyWCS):
         # initialize object
         wcs = cls(naxis=2)
         wcs.ra, wcs.dec, wcs.roll, wcs.camera, wcs.ccd = ra, dec, roll, camera, ccd
+        wcs.pixel_shape = (rrows, rcolumns)
 
         # center of the CCD
         xc, yc = xcent[camera][ccd], ycent[camera][ccd]
@@ -170,7 +171,7 @@ def _build_warp_matrices():
         for camera in np.arange(1, 5):
             for ccd in np.arange(1, 5):
                 wcs_t = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
-                truth = wcs_t.wcs_pix2world(np.asarray([R.ravel(), C.ravel()]).T, 0)
+                truth = wcs_t.all_pix2world(np.asarray([R.ravel(), C.ravel()]).T, 0)
 
                 wcs_c = WCS.predict(
                     ra=wcs_t.ra,
@@ -179,7 +180,7 @@ def _build_warp_matrices():
                     camera=wcs_t.camera,
                     ccd=wcs_t.ccd,
                 )
-                prediction = wcs_c.wcs_pix2world(
+                prediction = wcs_c.all_pix2world(
                     np.asarray([R.ravel(), C.ravel()]).T, 0
                 )
 

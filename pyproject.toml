@@ -13,7 +13,6 @@ rich = "^13.7.0"
 tqdm = "^4.66.1"
 matplotlib = "^3.8.2"
 
-
 [tool.poetry.group.dev.dependencies]
 mkdocs = "^1.5.3"
 mkdocstrings = "^0.24.0"
@@ -23,7 +22,6 @@ pytest = "^7.4.3"
 black = "^23.11.0"
 isort = "^5.12.0"
 flake8 = "^6.1.0"
-mkdocs-jupyter = "^0.24.6"
 jupyterlab = "^4.0.9"
 
 [build-system]
