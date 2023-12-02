@@ -180,6 +180,7 @@ def _build_wcs_data():
     json_data = json.dumps(sep_dicts)
     with bz2.open(filename, "wt", encoding="utf-8") as f:
         f.write(json_data)
+    _build_support_dicts()
 
 
 def _load_wcs_data():

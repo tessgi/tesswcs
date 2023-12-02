@@ -36,3 +36,10 @@ jobs:
         body: 'Description of the release'
         draft: false
         prerelease: false
+
+    - name: Deploy website
+      env:
+          GITHUB_TOKEN: ${{ secrets.ACTION_PAT }}    
+      if: github.ref == 'refs/heads/main'
+      run: |
+        make deploy

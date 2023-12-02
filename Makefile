@@ -1,31 +1,34 @@
 .PHONY: all clean pytest coverage flake8 black mypy isort
 
-CMD:=poetry run
-PYMODULE:=src
-TESTS:=tests
-
 # Run all the checks which do not change files
 all: isort black flake8 pytest
 
 # Run the unit tests using `pytest`
 pytest:
-	$(CMD) pytest $(PYMODULE) $(TESTS)
+	poetry run pytest src tests
 
 # Lint the code using `flake8`
 flake8:
-	$(CMD) flake8 $(PYMODULE) $(TESTS)
+	poetry run flake8 src tests
 
 # Automatically format the code using `black`
 black:
-	$(CMD) black $(PYMODULE) $(TESTS)
+	poetry run black src tests
 
 # Order the imports using `isort`
 isort:
-	$(CMD) isort $(PYMODULE) $(TESTS)
+	poetry run isort src tests
+
+release-minor:
+    poetry version minor
+    git add pyproject.toml
+    git commit -m "Bump version to $$(poetry version -s)"
+    git tag -a "v$$(poetry version -s)" -m "Release v$$(poetry version -s)"
+    git push origin main --tags
 
 # Serve docs
 serve:
-	$(CMD) mkdocs serve
+	poetry run mkdocs serve
 
 deploy:
-	$(CMD) mkdocs gh-deploy --force
+	poetry run mkdocs gh-deploy --force
