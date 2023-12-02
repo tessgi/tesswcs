@@ -2,10 +2,6 @@ name: pytest
 
 on: [push, pull_request]
 
-permissions:
-  contents: read
-  pages: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,6 +12,11 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Configure git
+      run: |
+        git config --global user.email "christina.l.hedges@nasa.gov"
+        git config --global user.name "Christina Hedges"
+        
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -40,6 +41,8 @@ jobs:
         make pytest
 
     - name: Deploy website
+      env:
+          GITHUB_TOKEN: ${{ secrets.ACTION_PAT }}    
       if: github.ref == 'refs/heads/main'
       run: |
         make deploy
