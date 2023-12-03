@@ -3,6 +3,7 @@ import bz2
 import json
 
 import astropy.units as u
+import matplotlib.pyplot as plt
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
 from astropy.io import fits
@@ -154,7 +155,7 @@ class WCS(astropyWCS):
         return hdr
 
 
-def _build_warp_matrices():
+def _build_warp_matrices(plot=False):
     R, C = np.meshgrid(
         np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
     )
@@ -167,11 +168,12 @@ def _build_warp_matrices():
     }
 
     for sector in tqdm(np.arange(1, 14)):
-        # fig, ax = plt.subplots(4, 4, figsize=(10, 10))
+        if plot:
+            fig, ax = plt.subplots(4, 4, figsize=(10, 10), sharex=True, sharey=True)
         for camera in np.arange(1, 5):
             for ccd in np.arange(1, 5):
                 wcs_t = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
-                truth = wcs_t.all_pix2world(np.asarray([R.ravel(), C.ravel()]).T, 0)
+                truth = wcs_t.wcs_pix2world(np.asarray([R.ravel(), C.ravel()]).T, 0)
 
                 wcs_c = WCS.predict(
                     ra=wcs_t.ra,
@@ -179,8 +181,9 @@ def _build_warp_matrices():
                     roll=wcs_t.roll,
                     camera=wcs_t.camera,
                     ccd=wcs_t.ccd,
+                    warp=False,
                 )
-                prediction = wcs_c.all_pix2world(
+                prediction = wcs_c.wcs_pix2world(
                     np.asarray([R.ravel(), C.ravel()]).T, 0
                 )
 
@@ -233,9 +236,12 @@ def _build_warp_matrices():
                         prediction[:, 1],
                     ]
                 ).T
-
-                # sep = np.hypot(*(truth - prediction).T).reshape(R.shape)
-                # ax[camera-1][ccd-1].pcolormesh(R, C, sep, vmin=0, vmax=3*21/3600)
+                if plot:
+                    sep = np.hypot(*(truth - prediction).T).reshape(R.shape)
+                    ax[camera - 1][ccd - 1].pcolormesh(
+                        R, C, sep, vmin=0, vmax=3 * 21 / 3600
+                    )
+                    ax[camera - 1][ccd - 1].set(title=f"Camera {camera}, CCD {ccd}")
                 Ms[camera][ccd].append(M2.copy())
 
     for camera in np.arange(1, 5):

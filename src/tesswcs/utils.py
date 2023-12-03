@@ -379,9 +379,10 @@ def _load_warp_matrices():
     log.debug("Loading warp matrices dictionary from file")
     filename = f"{PACKAGEDIR}/data/TESS_wcs_Ms.json.bz2"
     if not os.path.isfile(filename):
-        raise FileNotFoundError(
+        log.warn(
             "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
         )
+        return None
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         Ms = json.load(f)
     return {int(key): _fix_keys(dict) for key, dict in Ms.items()}
