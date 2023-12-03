@@ -27,6 +27,9 @@ jobs:
         poetry publish --username ${{ secrets.PYPI_USERNAME }} --password ${{ secrets.PYPI_PASSWORD }}
 
     - name: Create GitHub Release
+      permissions:
+        contents: write
+      uses: actions/checkout@v4
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
