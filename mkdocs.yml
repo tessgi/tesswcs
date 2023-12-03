@@ -1,7 +1,10 @@
 site_name: tesswcs
 nav:
     - Home: README.md
-    - Tutorial: tutorial.md
+    - How to use tesswcs: tutorial.md
+    - Finding where and when targets are observable: tutorial2.md
+    - About tesswcs: about.md
+
 theme:
   name: "material"
   icon:

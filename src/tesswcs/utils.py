@@ -382,10 +382,20 @@ def _load_warp_matrices():
         log.warn(
             "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
         )
-        return None
+        return None, None
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         Ms = json.load(f)
-    return {int(key): _fix_keys(dict) for key, dict in Ms.items()}
+    Ms = {int(key): _fix_keys(dict) for key, dict in Ms.items()}
+    filename = f"{PACKAGEDIR}/data/TESS_wcs_offset_weights.json.bz2"
+    if not os.path.isfile(filename):
+        log.warn(
+            "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
+        )
+        return None, None
+    with bz2.open(filename, "rt", encoding="utf-8") as f:
+        offset_weights = json.load(f)
+    offset_weights = {int(key): _fix_keys(dict) for key, dict in offset_weights.items()}
+    return Ms, offset_weights
 
 
 def plot_geometry(ax=None):

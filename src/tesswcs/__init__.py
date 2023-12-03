@@ -68,6 +68,6 @@ wcs_dicts = _load_wcs_data()
     sip_dict,
 ) = _load_support_dicts()
 
-Ms = _load_warp_matrices()
+Ms, offset_weights = _load_warp_matrices()
 
 from .tesswcs import WCS  # noqa: E402, F401

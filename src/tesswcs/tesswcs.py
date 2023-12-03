@@ -14,6 +14,7 @@ from tqdm import tqdm
 from . import (
     PACKAGEDIR,
     Ms,
+    offset_weights,
     pixel_corners,
     rcolumns,
     rrows,
@@ -133,8 +134,10 @@ class WCS(astropyWCS):
             np.asarray([[0.0593726, 0.00123252], [0.00123252, 0.0593726]]) * (C)
         )
         if warp:
-            wcs.wcs.pc = wcs.wcs.pc.dot(Ms[camera][ccd][:2, :2])
-            wcs.wcs.crpix += Ms[camera][ccd][:2, 2]
+            wcs.wcs.pc = wcs.wcs.pc.dot(Ms[camera][ccd])
+            ecl_roll = wcs.ecl_roll.rad
+            X = np.asarray([np.sin(ecl_roll), np.cos(ecl_roll), 1])
+            wcs.wcs.crpix += X.dot(offset_weights[camera][ccd])
         return wcs
 
     def to_header(self, key=None):
@@ -154,8 +157,39 @@ class WCS(astropyWCS):
                 hdr[attr] = getattr(self, attr)
         return hdr
 
+    @property
+    def ecl_roll(self):
+        """returns the roll angle of the pointing with respect to the ecliptic plane.
+        This is handy for figuring out which are northern hemisphere pointings, and helping with warping.
+        """
+        c = SkyCoord(self.ra, self.dec, unit="deg")
+        ecl = c.transform_to("geocentricmeanecliptic")
+
+        # The roll angle w.r.t the ecliptic plane
+        ecl_roll = ecl.position_angle(
+            c.directional_offset_by(-self.roll * u.deg, 1 * u.arcsecond).transform_to(
+                "geocentricmeanecliptic"
+            )
+        )
+        return ecl_roll
+
 
 def _build_warp_matrices(plot=False):
+    """Find the best fitting warp matrices
+
+    This function uses all the archival TESS data to build a small warp matrix and updated
+    CRPIX value for the WCS for each camera and CCD.
+
+    This function works by building the true, archival WCS, and then comparing with the
+    predicted WCS. We find the sky projected points in each case, and then find the transformation
+    matrix that makes the predicted sky coordinates match the true sky coordinates. We then translate
+    those warped coordinates back to pixel space using the predicted WCS. We can fit the warp between the
+    new pixel space and the true pixel grid, to find the small change that needs to be applied to our PC matrix.
+
+    We also find the change in CRPIX (offset term) that is best fit for each pointing.
+
+    This term is a strong function of the roll angle w.r.t the ecliptic, so we specify a delta CRPIX as a function of the ecliptic roll.
+    """
     R, C = np.meshgrid(
         np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
     )
@@ -167,7 +201,7 @@ def _build_warp_matrices(plot=False):
         4: {1: [], 2: [], 3: [], 4: []},
     }
 
-    for sector in tqdm(np.arange(1, 14)):
+    for sector in tqdm(wcs_dicts.keys()):
         if plot:
             fig, ax = plt.subplots(4, 4, figsize=(10, 10), sharex=True, sharey=True)
         for camera in np.arange(1, 5):
@@ -242,13 +276,46 @@ def _build_warp_matrices(plot=False):
                         R, C, sep, vmin=0, vmax=3 * 21 / 3600
                     )
                     ax[camera - 1][ccd - 1].set(title=f"Camera {camera}, CCD {ccd}")
-                Ms[camera][ccd].append(M2.copy())
+                Ms[int(camera)][int(ccd)].append(M2.copy().tolist())
+
+    ra = np.asarray([wcs_dicts[sdx]["ra"] for sdx in wcs_dicts.keys()])
+    dec = np.asarray([wcs_dicts[sdx]["dec"] for sdx in wcs_dicts.keys()])
+    roll = np.asarray([wcs_dicts[sdx]["roll"] for sdx in wcs_dicts.keys()])
+
+    c = SkyCoord(ra, dec, unit="deg")
+    ecl = c.transform_to("geocentricmeanecliptic")
+
+    # The roll angle w.r.t the ecliptic plane
+    ecl_roll = ecl.position_angle(
+        c.directional_offset_by(-roll * u.deg, 1 * u.arcsecond).transform_to(
+            "geocentricmeanecliptic"
+        )
+    )
+
+    X = np.asarray([np.sin(ecl_roll), np.cos(ecl_roll), roll**0]).T
+
+    offset_weights = {
+        int(camera): {
+            int(ccd): np.linalg.solve(
+                X.T.dot(X), X.T.dot(np.asarray(Ms[camera][ccd])[:, :2, 2])
+            ).tolist()
+            for ccd in np.arange(1, 5)
+        }
+        for camera in np.arange(1, 5)
+    }
 
     for camera in np.arange(1, 5):
         for ccd in np.arange(1, 5):
-            Ms[int(camera)][int(ccd)] = np.median(Ms[camera][ccd], axis=0).tolist()
+            Ms[int(camera)][int(ccd)] = np.median(Ms[camera][ccd], axis=0)[
+                :2, :2
+            ].tolist()
 
     filename = f"{PACKAGEDIR}/data/TESS_wcs_Ms.json.bz2"
     json_data = json.dumps(Ms)
+    with bz2.open(filename, "wt", encoding="utf-8") as f:
+        f.write(json_data)
+
+    filename = f"{PACKAGEDIR}/data/TESS_wcs_offset_weights.json.bz2"
+    json_data = json.dumps(offset_weights)
     with bz2.open(filename, "wt", encoding="utf-8") as f:
         f.write(json_data)

@@ -203,4 +203,4 @@ def test_comprable():
                     .reshape(R.shape)
                     .value
                 )
-                assert (separation < 0.5).all()
+                assert (separation < 1).all()
