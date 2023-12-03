@@ -38,9 +38,10 @@ def test_install():
     _build_support_dicts()
 
     # Generate a figure for documentation
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    plot_geometry(ax=ax)
-    fig.savefig(f"{DOCSDIR}/figures/tess_camera.png", bbox_inches="tight", dpi=150)
+    if os.environ.get("CI") != "true":
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        plot_geometry(ax=ax)
+        fig.savefig(f"{DOCSDIR}/figures/tess_camera.png", bbox_inches="tight", dpi=150)
 
 
 def test_utils():
@@ -65,31 +66,33 @@ def test_load_archive():
     sector, camera, ccd = 1, 1, 1
     wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
     assert isinstance(wcs, astropyWCS)
-
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_subplot(111, projection="mollweide")
-    ax.grid(True)
+    if os.environ.get("CI") != "true":
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(111, projection="mollweide")
+        ax.grid(True)
     for camera in np.arange(1, 5):
         for ccd in np.arange(1, 5):
             wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
             fp = wcs.pixel_to_world(*footprint()[:-30].T)
-            ax.scatter(
-                fp.ra.wrap_at(180 * u.deg).rad,
-                fp.dec.rad,
-                lw=0.5,
-                s=0.1,
-                c=f"C{camera - 1}",
-            )
-    ax.set(
-        title=f"WCS for Sector {sector} Pointing",
-        xlabel="RA",
-        ylabel="Dec",
-    )
-    fig.savefig(
-        f"{DOCSDIR}/figures/tess_{sector}_archive.png",
-        bbox_inches="tight",
-        dpi=150,
-    )
+            if os.environ.get("CI") != "true":
+                ax.scatter(
+                    fp.ra.wrap_at(180 * u.deg).rad,
+                    fp.dec.rad,
+                    lw=0.5,
+                    s=0.1,
+                    c=f"C{camera - 1}",
+                )
+    if os.environ.get("CI") != "true":
+        ax.set(
+            title=f"WCS for Sector {sector} Pointing",
+            xlabel="RA",
+            ylabel="Dec",
+        )
+        fig.savefig(
+            f"{DOCSDIR}/figures/tess_{sector}_archive.png",
+            bbox_inches="tight",
+            dpi=150,
+        )
 
 
 def test_predict():
@@ -104,30 +107,33 @@ def test_predict():
     wcs = WCS.predict(ra=ra, dec=dec, roll=roll, camera=camera, ccd=ccd)
     assert isinstance(wcs, astropyWCS)
 
-    fig = plt.figure(figsize=(10, 5))
-    ax = fig.add_subplot(111, projection="mollweide")
-    ax.grid(True)
+    if os.environ.get("CI") != "true":
+        fig = plt.figure(figsize=(10, 5))
+        ax = fig.add_subplot(111, projection="mollweide")
+        ax.grid(True)
     for camera in np.arange(1, 5):
         for ccd in np.arange(1, 5):
             wcs = WCS.predict(ra=ra, dec=dec, roll=roll, camera=camera, ccd=ccd)
             fp = wcs.pixel_to_world(*footprint()[:-30].T)
-            ax.scatter(
-                fp.ra.wrap_at(180 * u.deg).rad,
-                fp.dec.rad,
-                lw=0.5,
-                s=0.1,
-                c=f"C{camera - 1}",
-            )
-    ax.set(
-        title=f"Predicted WCS for RA:{ra}, Dec:{dec}, Roll:{roll}\n[i.e. Sector {sector} Pointing]",
-        xlabel="RA",
-        ylabel="Dec",
-    )
-    fig.savefig(
-        f"{DOCSDIR}/figures/tess_{sector}_predict.png",
-        bbox_inches="tight",
-        dpi=150,
-    )
+            if os.environ.get("CI") != "true":
+                ax.scatter(
+                    fp.ra.wrap_at(180 * u.deg).rad,
+                    fp.dec.rad,
+                    lw=0.5,
+                    s=0.1,
+                    c=f"C{camera - 1}",
+                )
+    if os.environ.get("CI") != "true":
+        ax.set(
+            title=f"Predicted WCS for RA:{ra}, Dec:{dec}, Roll:{roll}\n[i.e. Sector {sector} Pointing]",
+            xlabel="RA",
+            ylabel="Dec",
+        )
+        fig.savefig(
+            f"{DOCSDIR}/figures/tess_{sector}_predict.png",
+            bbox_inches="tight",
+            dpi=150,
+        )
 
 
 def test_write():
@@ -166,22 +172,26 @@ def test_comprable():
         .reshape(R.shape)
         .value
     )
+    if os.environ.get("CI") != "true":
+        fig, ax = plt.subplots()
+        im = ax.pcolormesh(C[0], R[:, 0], separation, vmin=0, vmax=0.5)
+        ax.set(
+            xlabel="Column",
+            ylabel="Row",
+            title=f"Sector {sector}, Camera {camera}, CCD {ccd}",
+        )
+        cbar = plt.colorbar(im, ax=ax)
+        cbar.set_label(
+            "Separation between true position and predicted position [pixels]"
+        )
+        fig.savefig(
+            f"{DOCSDIR}/figures/tess_{sector}_separation.png",
+            bbox_inches="tight",
+            dpi=150,
+        )
 
-    fig, ax = plt.subplots()
-    im = ax.pcolormesh(C[0], R[:, 0], separation, vmin=0, vmax=0.5)
-    ax.set(
-        xlabel="Column",
-        ylabel="Row",
-        title=f"Sector {sector}, Camera {camera}, CCD {ccd}",
-    )
-    cbar = plt.colorbar(im, ax=ax)
-    cbar.set_label("Separation between true position and predicted position [pixels]")
-    fig.savefig(
-        f"{DOCSDIR}/figures/tess_{sector}_separation.png",
-        bbox_inches="tight",
-        dpi=150,
-    )
-
+    if os.environ.get("CI") != "true":
+        fig, ax = plt.subplots()
     # Check all C1 sector, camera, ccd predictions are within half a pixel of the truth
     for sector in tqdm(np.arange(1, 14), desc="sector", leave=True, position=0):
         for camera in np.arange(1, 5):
@@ -204,3 +214,22 @@ def test_comprable():
                     .value
                 )
                 assert (separation < 1).all()
+                if os.environ.get("CI") != "true":
+                    ax.hist(
+                        separation.ravel(),
+                        np.linspace(0, 2, 50),
+                        alpha=0.02,
+                        color="k",
+                        density=True,
+                    )
+    if os.environ.get("CI") != "true":
+        ax.set(
+            xlabel="Separation between true WCS and predicted WCS [pixel]",
+            yticks=[],
+            title="tesswcs accuracy for sectors 1-70",
+        )
+        plt.savefig(
+            f"{DOCSDIR}/figures/tess_accuracy.png",
+            dpi=150,
+            bbox_inches="tight",
+        )

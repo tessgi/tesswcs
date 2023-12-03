@@ -12,6 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set CI environment variable
+      run: echo "CI=true" >> $GITHUB_ENV
+
     - name: Configure git
       run: |
         git config --global user.email "christina.l.hedges@nasa.gov"
