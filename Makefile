@@ -19,10 +19,8 @@ black:
 isort:
 	poetry run isort src tests
 
-# Release a minor version 
-release-minor:
-	poetry version minor
-	git add pyproject.toml
+# Release a version 
+release:
 	git commit -m "Bump version to $$(poetry version -s)"
 	git tag -a "v$$(poetry version -s)" -m "Release v$$(poetry version -s)"
 	git push origin main --tags
