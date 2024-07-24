@@ -155,7 +155,7 @@ def get_pixel_locations(
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     pix = wcs.world_to_pixel(coords)
-                    # Pixels need to be indexed from 1
+                    # Pixels are indexed from 1
                     col, row = np.atleast_1d(pix[0]) + 1, np.atleast_1d(pix[1]) + 1
                 k = (
                     (row > 0)

@@ -1,6 +1,7 @@
 import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
+from astropy import units as u
 from astropy.time import Time
 
 from tesswcs.locate import check_observability, get_pixel_locations
@@ -35,3 +36,19 @@ def test_locate():
     assert pixel_locations["Sector"][0] == 71
     pixel_locations = get_pixel_locations(c, time=t)
     assert len(pixel_locations) == 1
+
+def test_pixel_location():
+
+    t = Time(2458489.8075233004, format='jd')
+    c = SkyCoord('05 45 56.64 -00 16 15.3', frame='icrs', unit=(u.hourangle, u.deg))
+
+    pixel_locations = get_pixel_locations(c, time=t)
+    
+    assert len(pixel_locations) == 1
+    assert pixel_locations['Sector'][0] == 6
+    assert pixel_locations['Camera'][0] == 1
+    assert pixel_locations['CCD'][0] == 1
+    assert np.round(pixel_locations['Row'][0], 1) == 1107.6
+    assert np.round(pixel_locations['Column'][0], 1) == 1087.8
+
+
