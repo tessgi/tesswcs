@@ -39,6 +39,7 @@ def test_locate():
 
 def test_pixel_location():
 
+    # Time and coordinate correspond to asteroid 1998 YT6, as queried on JPL Horizons.
     t = Time(2458489.8075233004, format='jd')
     c = SkyCoord('05 45 56.64 -00 16 15.3', frame='icrs', unit=(u.hourangle, u.deg))
 
@@ -48,6 +49,10 @@ def test_pixel_location():
     assert pixel_locations['Sector'][0] == 6
     assert pixel_locations['Camera'][0] == 1
     assert pixel_locations['CCD'][0] == 1
+
+    # Expected col, row calculated by:
+    # 1. using tessrip to get average WCS from sector/camera/ccd
+    # 2. converting coord to col, row with wcs_world2pix()
     assert np.round(pixel_locations['Row'][0], 1) == 1107.6
     assert np.round(pixel_locations['Column'][0], 1) == 1087.8
 
