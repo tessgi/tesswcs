@@ -1,4 +1,5 @@
 """Convenience functions to help locate sources"""
+
 import warnings
 
 import numpy as np
@@ -155,7 +156,8 @@ def get_pixel_locations(
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     pix = wcs.world_to_pixel(coords)
-                    row, col = np.atleast_1d(pix[0]), np.atleast_1d(pix[1])
+                    # Pixels are indexed from 1
+                    col, row = np.atleast_1d(pix[0]) + 1, np.atleast_1d(pix[1]) + 1
                 k = (
                     (row > 0)
                     & (col > 0)
@@ -167,8 +169,8 @@ def get_pixel_locations(
                     sectors.append(np.ones(k.sum(), int) * sector)
                     cameras.append(np.ones(k.sum(), int) * camera)
                     ccds.append(np.ones(k.sum(), int) * ccd)
-                    rows.append(np.round(row[k], 1))
-                    columns.append(np.round(col[k], 1))
+                    rows.append(row[k])
+                    columns.append(col[k])
     if len(target_ids) == 0:
         return Table(
             None, names=["Target Index", "Sector", "Camera", "CCD", "Row", "Column"]
