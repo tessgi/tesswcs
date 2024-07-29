@@ -14,13 +14,16 @@ tqdm = "^4.66.1"
 matplotlib = "^3.8.2"
 toml = "^0.10.2"
 
+[tool.poetry.group.dev]
+optional = true
+
 [tool.poetry.group.dev.dependencies]
 mkdocs = "^1.5.3"
 mkdocstrings = "^0.24.0"
 mkdocs-material = "^9.4.10"
 pytkdocs = {version = "^0.12.0", extras = ["numpy-style"]}
 pytest = "^7.4.3"
-black = "^23.11.0"
+black = "^24.0.0"
 isort = "^5.12.0"
 flake8 = "^6.1.0"
 jupyterlab = "^4.0.9"

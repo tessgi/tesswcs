@@ -1,4 +1,5 @@
 """Convenience functions to help locate sources"""
+
 import warnings
 
 import numpy as np
