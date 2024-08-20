@@ -164,6 +164,7 @@ def get_pixel_locations(
                     & (col > 0)
                     & (row < (wcs.pixel_shape[0] + 1))
                     & (col < (wcs.pixel_shape[1] + 1))
+                )
 
                 if k.any():
                     k[k] &= np.asarray([wcs.footprint_contains(c) for c in coords[k]])
