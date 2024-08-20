@@ -3,7 +3,7 @@ import os  # noqa
 
 PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
-__version__ = "1.1.4"
+__version__ = "1.1.5"
 
 # Standard library
 import logging  # noqa: E402

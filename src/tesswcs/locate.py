@@ -164,9 +164,10 @@ def get_pixel_locations(
                     & (col > 0)
                     & (row < (wcs.pixel_shape[0] + 1))
                     & (col < (wcs.pixel_shape[1] + 1))
-                ) & wcs.footprint_contains(coords)
+                )
 
                 if k.any():
+                    k[k] &= np.asarray([wcs.footprint_contains(c) for c in coords[k]])
                     target_ids.append(np.where(k)[0])
                     sectors.append(np.ones(k.sum(), int) * sector)
                     cameras.append(np.ones(k.sum(), int) * camera)
