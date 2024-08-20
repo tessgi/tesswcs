@@ -80,4 +80,3 @@ def test_pixel_location_skycoord_array():
     assert pixel_locations["Target Index"][1] == 2
 
 
-
