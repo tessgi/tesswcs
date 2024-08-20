@@ -157,13 +157,15 @@ def get_pixel_locations(
                     warnings.simplefilter("ignore")
                     pix = wcs.world_to_pixel(coords)
                     # Pixels are indexed from 1
-                    col, row = np.atleast_1d(pix[0]) + 1, np.atleast_1d(pix[1]) + 1
+                    col, row = np.atleast_1d(pix[0]) + 1, np.atleast_1d(pix[1]) + 1                
+                
                 k = (
                     (row > 0)
                     & (col > 0)
                     & (row < (wcs.pixel_shape[0] + 1))
                     & (col < (wcs.pixel_shape[1] + 1))
-                )
+                ) & wcs.footprint_contains(coords)
+
                 if k.any():
                     target_ids.append(np.where(k)[0])
                     sectors.append(np.ones(k.sum(), int) * sector)
@@ -171,6 +173,7 @@ def get_pixel_locations(
                     ccds.append(np.ones(k.sum(), int) * ccd)
                     rows.append(row[k])
                     columns.append(col[k])
+
     if len(target_ids) == 0:
         return Table(
             None, names=["Target Index", "Sector", "Camera", "CCD", "Row", "Column"]
