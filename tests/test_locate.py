@@ -57,7 +57,7 @@ def test_pixel_location():
     assert np.round(pixel_locations["Column"][0], 1) == 1087.8
 
 
-test_pixel_location_skycoord_array():
+def test_pixel_location_skycoord_array():
     # Time is in Sector 6, targets are TOI-700, L 98-59, and SN 1987 A
     # TOI-700 and SN 1987 A were observed in Sector 6, L 98-59 was not
     t = Time(2458489.8075233004, format="jd")
