@@ -157,8 +157,8 @@ def get_pixel_locations(
                     warnings.simplefilter("ignore")
                     pix = wcs.world_to_pixel(coords)
                     # Pixels are indexed from 1
-                    col, row = np.atleast_1d(pix[0]) + 1, np.atleast_1d(pix[1]) + 1                
-                
+                    col, row = np.atleast_1d(pix[0]) + 1, np.atleast_1d(pix[1]) + 1
+
                 k = (
                     (row > 0)
                     & (col > 0)
