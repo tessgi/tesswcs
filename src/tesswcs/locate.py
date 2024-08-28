@@ -46,6 +46,66 @@ def _process_input_parameters(coords, sector=None, cycle=None, time=None):
     return coords, sector_mask
 
 
+def get_observability_mask(wcs: WCS, coords: SkyCoord):
+    """For given RAs and Decs, return an array of the same shape with True or False, where True indicates the point falls inside the WCS
+
+    Parameters:
+    -----------
+    wcs: astropy.wcs.WCS
+        Input WCS to check
+    RA: np.ndarray
+        RAs to check in degrees
+    Dec: np.ndarray
+        Decs to check in degrees
+
+    Returns:
+    --------
+    mask: np.ndarray
+        Array of booleans with same shape as `RA` and `Dec`. True where `RA` and `Dec` will fall on observable pixels.
+    """
+    # Firstly, use WCS to calculate a cone around the region of pixels
+    # Calculate a "scale" matrix (we don't care about rotation"
+    scale = np.asarray(
+        [
+            [np.hypot(*(wcs.wcs.pc * wcs.wcs.cdelt)[:, 0]), 0],
+            [0, np.hypot(*(wcs.wcs.pc * wcs.wcs.cdelt)[:, 1])],
+        ]
+    )
+    # Find the separation from crpix to the corners
+    corners = (
+        np.asarray(
+            [
+                [0, 0],
+                [wcs._naxis[0], 0],
+                [0, wcs._naxis[1]],
+                [wcs._naxis[0], wcs._naxis[1]],
+            ]
+        )
+        - wcs.wcs.crpix
+    )
+    # Calculate the radius in degrees to each corner, take the maximum
+    rad = np.hypot(*corners.dot(scale).T).max()
+    # This mask is true only where RAs and Decs fall closer than `rad` to the wcs crval.
+    k = (coords.separation(SkyCoord(*wcs.wcs.crval, unit="deg")).degree < rad).reshape(
+        coords.ra.shape
+    )
+    if k.any():
+        # For those that do fall close, calculate their pixel value
+        C, R = wcs._all_world2pix(
+            np.asarray([coords.ra.deg[k], coords.dec.deg[k]]).T,
+            0,
+            tolerance=0.0001,
+            maxiter=20,
+            adaptive=False,
+            detect_divergence=False,
+            quiet=True,
+        ).T
+        # Update the mask with those pixels
+        j = (C > 0) & (R > 0) & (C < wcs._naxis[0]) & (R < wcs._naxis[1])
+        k[k] = j
+    return k
+
+
 def check_observability(
     coords: SkyCoord, sector: int = None, cycle: int = None, time: Time = None
 ) -> Table:
@@ -72,15 +132,12 @@ def check_observability(
         for camera in np.arange(1, 5):
             observable[sector][camera] = {}
             for ccd in np.arange(1, 5):
-                observable[sector][camera][ccd] = []
                 # wcs = WCS.predict(ra, dec, roll, camera, ccd)
                 if sector in wcs_dicts.keys():
                     wcs = WCS.from_archive(sector, camera, ccd)
                 else:
                     wcs = WCS.predict(ra, dec, roll, camera, ccd)
-                for coord in coords:
-                    onsilicon = wcs.footprint_contains(coord)
-                    observable[sector][camera][ccd].append(onsilicon)
+                observable[sector][camera][ccd] = get_observability_mask(wcs, coords)
 
     sector = np.hstack(np.asarray(list(observable.keys()))[:, None] * np.ones(16, int))
     camera = np.hstack(

@@ -61,9 +61,7 @@ def test_pixel_location_skycoord_array():
     # Time is in Sector 6, targets are TOI-700, L 98-59, and SN 1987 A
     # TOI-700 and SN 1987 A were observed in Sector 6, L 98-59 was not
     t = Time(2458489.8075233004, format="jd")
-    coordinates = ["97.09679 -65.57931",
-                   "124.53176 -68.313",
-                   "83.86658 -69.2696"]
+    coordinates = ["97.09679 -65.57931", "124.53176 -68.313", "83.86658 -69.2696"]
     c = SkyCoord(coordinates, frame="icrs", unit=u.deg)
 
     pixel_locations = get_pixel_locations(c, time=t)
@@ -78,5 +76,3 @@ def test_pixel_location_skycoord_array():
     assert pixel_locations["Camera"][1] == 4
     assert pixel_locations["CCD"][1] == 3
     assert pixel_locations["Target Index"][1] == 2
-
-
