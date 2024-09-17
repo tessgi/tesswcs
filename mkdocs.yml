@@ -3,6 +3,7 @@ nav:
     - Home: README.md
     - How to use tesswcs: tutorial.md
     - Finding where and when targets are observable: tutorial2.md
+    - Mapping TESS's view of the sky: tutorial3.md
     - About tesswcs: about.md
 
 theme:
