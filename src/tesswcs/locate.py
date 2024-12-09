@@ -101,7 +101,7 @@ def get_observability_mask(wcs: WCS, coords: SkyCoord):
             quiet=True,
         ).T
         # Update the mask with those pixels
-        j = (C > 0) & (R > 0) & (C < wcs._naxis[0]) & (R < wcs._naxis[1])
+        j = (C >= 0) & (R >= 44) & (C < (wcs._naxis[0] - 30)) & (R < (wcs._naxis[1] - 44))
         k[k] = j
     return k
 
