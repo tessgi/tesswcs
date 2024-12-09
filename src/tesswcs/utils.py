@@ -59,9 +59,8 @@ def get_M(truth, approx):
 
 
 def _build_wcs_data():
-    # This package isn't publicly available yet...
     try:
-        from tessrip import Rip
+        from tesscube import Cube
     except ImportError:
         raise ImportError("Must have `tessrip` installed to build the wcs dictionary.")
 
@@ -78,7 +77,7 @@ def _build_wcs_data():
             sep_dicts[sector][cam] = {}
             wcss = []
             for ccd in np.arange(1, 5):
-                wcss.append(Rip(sector, cam, ccd).wcs)
+                wcss.append(Cube(sector, cam, ccd).wcs)
             for idx in range(4):
                 crpix = [1045, 1001]
                 crval = SkyCoord(
@@ -252,30 +251,36 @@ def _build_support_dicts():
     """This function creates dictionaries of the best fitting CCD coordinates and SIP polynomials"""
     _wcs_dicts = _load_wcs_data()
     # Contains the corners of each CCD w.r.t the boresight
-    xs, ys = {
-        1: {1: [], 2: [], 3: [], 4: []},
-        2: {1: [], 2: [], 3: [], 4: []},
-        3: {1: [], 2: [], 3: [], 4: []},
-        4: {1: [], 2: [], 3: [], 4: []},
-    }, {
-        1: {1: [], 2: [], 3: [], 4: []},
-        2: {1: [], 2: [], 3: [], 4: []},
-        3: {1: [], 2: [], 3: [], 4: []},
-        4: {1: [], 2: [], 3: [], 4: []},
-    }
+    xs, ys = (
+        {
+            1: {1: [], 2: [], 3: [], 4: []},
+            2: {1: [], 2: [], 3: [], 4: []},
+            3: {1: [], 2: [], 3: [], 4: []},
+            4: {1: [], 2: [], 3: [], 4: []},
+        },
+        {
+            1: {1: [], 2: [], 3: [], 4: []},
+            2: {1: [], 2: [], 3: [], 4: []},
+            3: {1: [], 2: [], 3: [], 4: []},
+            4: {1: [], 2: [], 3: [], 4: []},
+        },
+    )
 
     # Contains the center of each CCD w.r.t the boresight
-    xcent, ycent = {
-        1: {1: [], 2: [], 3: [], 4: []},
-        2: {1: [], 2: [], 3: [], 4: []},
-        3: {1: [], 2: [], 3: [], 4: []},
-        4: {1: [], 2: [], 3: [], 4: []},
-    }, {
-        1: {1: [], 2: [], 3: [], 4: []},
-        2: {1: [], 2: [], 3: [], 4: []},
-        3: {1: [], 2: [], 3: [], 4: []},
-        4: {1: [], 2: [], 3: [], 4: []},
-    }
+    xcent, ycent = (
+        {
+            1: {1: [], 2: [], 3: [], 4: []},
+            2: {1: [], 2: [], 3: [], 4: []},
+            3: {1: [], 2: [], 3: [], 4: []},
+            4: {1: [], 2: [], 3: [], 4: []},
+        },
+        {
+            1: {1: [], 2: [], 3: [], 4: []},
+            2: {1: [], 2: [], 3: [], 4: []},
+            3: {1: [], 2: [], 3: [], 4: []},
+            4: {1: [], 2: [], 3: [], 4: []},
+        },
+    )
     log.debug("Building camera/CCD data.")
     for camera in np.arange(1, 5):
         for ccd in np.arange(1, 5):
@@ -335,7 +340,7 @@ def _build_support_dicts():
                     ys[camera][ccd] - ycent[camera][ccd],
                 ]
             )
-            approx = ((pixel_corners - [1045, 1001])).T
+            approx = (pixel_corners - [1045, 1001]).T
             M[int(camera)][int(ccd)] = get_M(truth.T, approx.T).tolist()
 
     for var in ["xs", "ys", "xcent", "ycent", "sip", "M"]:
