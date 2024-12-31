@@ -3,14 +3,14 @@ import os  # noqa
 
 PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
-import toml  # noqa
+from importlib.metadata import version, PackageNotFoundError  # noqa
 
 
 def get_version():
-    toml_dir = "/".join(PACKAGEDIR.split("/")[:-2])
-    with open(f"{toml_dir}/pyproject.toml", "r") as f:
-        pyproject = toml.load(f)
-        return pyproject["tool"]["poetry"]["version"]
+    try:
+        return version("tesswcs")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 __version__ = get_version()
