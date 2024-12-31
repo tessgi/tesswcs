@@ -10,9 +10,8 @@ from tqdm import tqdm
 
 from tesswcs import PACKAGEDIR, WCS, pointings, rcolumns, rrows
 from tesswcs.utils import (
-    _build_support_dicts,
     _load_support_dicts,
-    _load_wcs_data,
+    _load_wcs_database,
     angle_from_matrix,
     angle_to_matrix,
     footprint,
@@ -25,7 +24,7 @@ DOCSDIR = "/".join([*PACKAGEDIR.split("/")[:-2], "docs"])
 def test_install():
     assert os.path.isfile(f"{PACKAGEDIR}/data/TESS_wcs_data.json.bz2")
     # can read dictionaries
-    _wcs_dicts = _load_wcs_data()
+    _wcs_dicts = _load_wcs_database()
     xs, ys, xcent, ycent, M, sip = _load_support_dicts()
     # dictionaries have data
     assert "a" in sip.keys()
@@ -34,8 +33,6 @@ def test_install():
         assert 1 in dict[1].keys()
     assert 1 in _wcs_dicts[1][1].keys()
     assert pointings["RA"][0] == 352.6844
-
-    _build_support_dicts()
 
     # Generate a figure for documentation
     if os.environ.get("CI") != "true":
@@ -64,7 +61,7 @@ def test_footprint():
 def test_load_archive():
     """Can we load an archival TESS wcs?"""
     sector, camera, ccd = 1, 1, 1
-    wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
+    wcs = WCS.from_sector(sector=sector, camera=camera, ccd=ccd)
     assert isinstance(wcs, astropyWCS)
     if os.environ.get("CI") != "true":
         fig = plt.figure(figsize=(10, 5))
@@ -72,7 +69,7 @@ def test_load_archive():
         ax.grid(True)
     for camera in np.arange(1, 5):
         for ccd in np.arange(1, 5):
-            wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
+            wcs = WCS.from_sector(sector=sector, camera=camera, ccd=ccd)
             fp = wcs.pixel_to_world(*footprint()[:-30].T)
             if os.environ.get("CI") != "true":
                 ax.scatter(
@@ -162,7 +159,7 @@ def test_comprable():
     R, C = np.meshgrid(
         np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
     )
-    wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
+    wcs = WCS.from_sector(sector=sector, camera=camera, ccd=ccd)
     truth = wcs.pixel_to_world(R.ravel(), C.ravel())
     prediction = WCS.predict(
         ra=wcs.ra, dec=wcs.dec, roll=wcs.roll, camera=wcs.camera, ccd=wcs.ccd
@@ -199,7 +196,7 @@ def test_comprable():
                 R, C = np.meshgrid(
                     np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
                 )
-                wcs = WCS.from_archive(sector=sector, camera=camera, ccd=ccd)
+                wcs = WCS.from_sector(sector=sector, camera=camera, ccd=ccd)
                 truth = wcs.pixel_to_world(R.ravel(), C.ravel())
                 prediction = WCS.predict(
                     ra=wcs.ra,

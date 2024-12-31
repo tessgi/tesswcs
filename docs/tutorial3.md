@@ -12,7 +12,7 @@ from astropy.coordinates import SkyCoord
 from tqdm import tqdm
 ```
 
-Make sure you're using the most recent version, (1.1.7 or higher)
+Make sure you're using the most recent version, (1.2.0 or higher)
 
 
 ```python
@@ -22,7 +22,7 @@ tesswcs.__version__
 
 
 
-    '1.1.7'
+    '1.2.0'
 
 
 
@@ -31,10 +31,6 @@ tesswcs.__version__
 # All the TESS pointings
 pointings = tesswcs.pointings[['RA', "Dec", "Roll"]].to_pandas().values
 ```
-
-    /Users/chedges/miniforge3/lib/python3.9/site-packages/pandas/core/arrays/masked.py:60: UserWarning: Pandas requires version '1.3.6' or newer of 'bottleneck' (version '1.3.5' currently installed).
-      from pandas.core import (
-
 
 To plot observability we will need a grid of RAs and Decs over the sky to check. I've just done a uniform grid in RA and Dec, which is not ideal, you could switch this to a different method.
 
@@ -48,14 +44,15 @@ To plot observability we will need a grid of RAs and Decs over the sky to check.
 RA, Dec = np.mgrid[:360:2000j, -90:90:1201j]
 ```
 
-Below we loop through all the pointings, cameras, and CCDs and calculate which points in the RA and Dec grid fall on a camera. This can take a few minutes depending on the resolution of the grid. 
+Below we loop through all the pointings, cameras, and CCDs and calculate which points in the RA and Dec grid fall on a camera. We are going to show only data that will be observed up to and including Cycle 7. This can take a few minutes depending on the resolution of the grid. 
 
 
 ```python
 # Array to accumulate number of observations
 nobs = np.zeros(RA.shape, dtype=float)
+k = tesswcs.pointings['Cycle'] <= 7
 # Loop through all the ra, dec and roll of the pointings
-for ra, dec, roll in tqdm(pointings, desc='Pointing', leave=True, position=0):
+for ra, dec, roll in tqdm(pointings[k], desc='Pointing', leave=True, position=0):
     # Loop through each camera
     for camera in np.arange(1, 5):
         # Loop through each CCD
@@ -65,7 +62,7 @@ for ra, dec, roll in tqdm(pointings, desc='Pointing', leave=True, position=0):
             nobs += mask
 ```
 
-    Pointing: 100%|█████████████████████████████████| 96/96 [04:03<00:00,  2.53s/it]
+    Pointing: 100%|█████████████████████████████████| 96/96 [04:22<00:00,  2.73s/it]
 
 
 Now we have finished, `nobs` is the number of times TESS is able to observe that point in the sky. We can plot this map;
@@ -94,5 +91,5 @@ If we sum up the number of points that are not zero, we get the sky coverage.
 print(100*(nobs!=0).sum()/np.prod(nobs.shape), "% of the sky observed by the end of Cycle 7")
 ```
 
-    98.94787676935887 % of the sky observed by the end of Cycle 7
+    98.64458784346378 % of the sky observed by the end of Cycle 7
 

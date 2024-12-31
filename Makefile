@@ -19,12 +19,6 @@ black:
 isort:
 	poetry run isort src tests
 
-# Release a version 
-release:
-	git commit -m "Bump version to $$(poetry version -s)"
-	git tag -a "v$$(poetry version -s)" -m "Release v$$(poetry version -s)"
-	git push origin main --tags
-
 # Serve docs
 serve:
 	poetry run mkdocs serve
