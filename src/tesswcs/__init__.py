@@ -3,16 +3,23 @@ import os  # noqa
 
 PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
-__version__ = "1.1.7"
+import toml  # noqa
+
+
+def get_version():
+    toml_dir = "/".join(PACKAGEDIR.split("/")[:-2])
+    with open(f"{toml_dir}/pyproject.toml", "r") as f:
+        pyproject = toml.load(f)
+        return pyproject["tool"]["poetry"]["version"]
+
+
+__version__ = get_version()
+
 
 # Standard library
 import logging  # noqa: E402
 
-# This library lets us have log messages with syntax highlighting
-from rich.logging import RichHandler  # noqa: E402
-
 log = logging.getLogger("tesswcs")
-log.addHandler(RichHandler(markup=True))
 
 import numpy as np  # noqa: E402
 from astropy.table import Table  # noqa: E402
@@ -41,21 +48,7 @@ pixel_corners = np.array(
     ]
 ) * np.asarray((rrows, rcolumns))
 
-from .utils import _load_support_dicts  # noqa: E402, F401
-from .utils import _load_warp_matrices  # noqa: E402, F401
-from .utils import _load_wcs_data  # noqa: E402, F401
-
-wcs_dicts = _load_wcs_data()
-
-(
-    xs,
-    ys,
-    xcent,
-    ycent,
-    M,
-    sip_dict,
-) = _load_support_dicts()
-
-Ms, offset_weights = _load_warp_matrices()
-
 from .tesswcs import WCS  # noqa: E402, F401
+from .utils import _load_wcs_database  # noqa: E402, F401
+
+latest_sector = np.max(list(_load_wcs_database().keys()))

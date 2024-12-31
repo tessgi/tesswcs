@@ -9,7 +9,7 @@ from astropy.time import Time
 
 from tesswcs import WCS, pointings
 
-from . import wcs_dicts
+from .utils import _load_wcs_database
 
 
 def _process_input_parameters(coords, sector=None, cycle=None, time=None):
@@ -101,7 +101,12 @@ def get_observability_mask(wcs: WCS, coords: SkyCoord):
             quiet=True,
         ).T
         # Update the mask with those pixels
-        j = (C > 0) & (R > 0) & (C < wcs._naxis[0]) & (R < wcs._naxis[1])
+        j = (
+            (C >= 0)
+            & (R >= 44)
+            & (C <= (wcs._naxis[0] - 30))
+            & (R <= (wcs._naxis[1] - 44))
+        )
         k[k] = j
     return k
 
@@ -123,7 +128,6 @@ def check_observability(
         Optional time to narrow down search. If a time is passed, will only search sector that encompasses that time.
     """
     coords, sector_mask = _process_input_parameters(coords, sector, cycle, time)
-
     observable = {}
     for sector, ra, dec, roll in pointings[sector_mask][
         ["Sector", "RA", "Dec", "Roll"]
@@ -132,11 +136,7 @@ def check_observability(
         for camera in np.arange(1, 5):
             observable[sector][camera] = {}
             for ccd in np.arange(1, 5):
-                # wcs = WCS.predict(ra, dec, roll, camera, ccd)
-                if sector in wcs_dicts.keys():
-                    wcs = WCS.from_archive(sector, camera, ccd)
-                else:
-                    wcs = WCS.predict(ra, dec, roll, camera, ccd)
+                wcs = WCS.from_sector(sector, camera, ccd)
                 observable[sector][camera][ccd] = get_observability_mask(wcs, coords)
 
     sector = np.hstack(np.asarray(list(observable.keys()))[:, None] * np.ones(16, int))
@@ -200,6 +200,7 @@ def get_pixel_locations(
     """
     coords, sector_mask = _process_input_parameters(coords, sector, cycle, time)
     target_ids, sectors, cameras, ccds, rows, columns = [], [], [], [], [], []
+    wcs_dicts = _load_wcs_database()
     for sector, ra, dec, roll in pointings[sector_mask][
         ["Sector", "RA", "Dec", "Roll"]
     ]:

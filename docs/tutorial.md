@@ -43,7 +43,7 @@ wcs = tesswcs.WCS.predict(ra=352.6844, dec=-64.8531, roll=222.1532, sector=1, ca
 
 If you initialize a `tesswcs.WCS` class object
 ```python
-wcs = tesswcs.WCS.from_archive(sector=1, camera=1, ccd=1)
+wcs = tesswcs.WCS.from_sector(sector=1, camera=1, ccd=1)
 ```
 
 you can access the RA, Dec, and Roll of the *boresight* pointing of TESS using class attributes, e.g.
@@ -64,7 +64,7 @@ will return
 (1, 1)
 ```
 
-In the case of pointing information on **archived** TESS data, you can also access the sector, e.g.
+You can also access the sector, e.g.
 
 ```python
 wcs.sector
@@ -90,7 +90,7 @@ First, to load a WCS from TESS data that has already been archived, we can use t
 
 
 ```python
-wcs = WCS.from_archive(sector=1, camera=1, ccd=1)
+wcs = WCS.from_sector(sector=1, camera=1, ccd=1)
 ```
 
 If we print `wcs`, can see the key parameters of the WCS
@@ -106,12 +106,12 @@ wcs
     WCS Keywords
     
     Number of WCS axes: 2
-    CTYPE : 'RA---TAN-SIP'  'DEC--TAN-SIP'  
-    CRVAL : 319.40344268202983  -41.281972194879756  
-    CRPIX : 1045.0  1001.0  
-    PC1_1 PC1_2  : 0.005481380474769502  -0.001728607226633  
-    PC2_1 PC2_2  : 0.001590229789019981  0.005438735789549773  
-    CDELT : 1.0  1.0  
+    CTYPE : 'RA---TAN-SIP' 'DEC--TAN-SIP' 
+    CRVAL : 319.40344268202983 -41.281972194879756 
+    CRPIX : 1045.0 1001.0 
+    PC1_1 PC1_2  : 0.005481380474769502 -0.001728607226633 
+    PC2_1 PC2_2  : 0.001590229789019981 0.005438735789549773 
+    CDELT : 1.0 1.0 
     NAXIS : 2078  2136
 
 
@@ -148,12 +148,12 @@ wcs_predicted
     WCS Keywords
     
     Number of WCS axes: 2
-    CTYPE : 'RA---TAN-SIP'  'DEC--TAN-SIP'  
-    CRVAL : 319.40931664794107  -41.2748366984738  
-    CRPIX : 1046.1403996643921  1002.0036834114205  
-    PC1_1 PC1_2  : -0.0054812525828552925  0.0017288395822421384  
-    PC2_1 PC2_2  : 0.0015904886653827649  0.005438761744971495  
-    CDELT : -1.0  1.0  
+    CTYPE : 'RA---TAN-SIP' 'DEC--TAN-SIP' 
+    CRVAL : 319.4158285479007 -41.27265773149455 
+    CRPIX : 1047.0643136919077 1002.0961710627299 
+    PC1_1 PC1_2  : -0.005481123840576269 0.0017292253510473817 
+    PC2_1 PC2_2  : 0.0015909063291915848 0.005438659407059995 
+    CDELT : -1.0 1.0 
     NAXIS : 2078  2136
 
 
@@ -319,7 +319,7 @@ pointings[pointings['Sector'] == sector]
 
 
 <div><i>Table length=1</i>
-<table id="table4954523632" class="table-striped table-bordered table-condensed">
+<table id="table5767980848" class="table-striped table-bordered table-condensed">
 <thead><tr><th>Cycle</th><th>Sector</th><th>RA</th><th>Dec</th><th>Roll</th><th>Start</th><th>End</th></tr></thead>
 <thead><tr><th>int64</th><th>int64</th><th>float64</th><th>float64</th><th>float64</th><th>float64</th><th>float64</th></tr></thead>
 <tr><td>7</td><td>90</td><td>155.0705</td><td>-51.7243</td><td>141.9459</td><td>2460746.5</td><td>2460774.5</td></tr>
@@ -515,7 +515,7 @@ row_pixel, column_pixel
 
 
 
-    (array(506.32115277), array(454.32962391))
+    (array(504.27292491), array(454.26318527))
 
 
 
