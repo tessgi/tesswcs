@@ -58,12 +58,22 @@ jobs:
           echo "changes=true" >> $GITHUB_ENV
         fi
 
-    - name: Commit and push changes
+    - name: Set up Git
+      if: env.changes == 'true'
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+
+    - name: Authenticate with GITHUB_TOKEN
+      if: env.changes == 'true'
+      run: |
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/tessgi/tesswcs.git
+
+    - name: Commit Changes
       if: env.changes == 'true'
       run: |
         git add .
         git commit -m "Automated update of internal database"
-        git push origin main
 
     - name: Bump version
       if: env.changes == 'true'
@@ -71,6 +81,10 @@ jobs:
         poetry version patch  # Bump the version (use `major`, `minor`, or `patch` as needed)
         git add pyproject.toml
         git commit -m "Bump version"
+
+    - name: Push Changes
+      if: env.changes == 'true'
+      run: |
         git push origin main --tags
 
     - name: Publish to PyPI
