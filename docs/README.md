@@ -79,3 +79,16 @@ In version 1.2 and higher `tesswcs` now includes the expected pointing parameter
 ## Limits on accuracy
 
 TESS observes large parts of the sky with a rapid cadence during ~27 day sectors. Since the spacecraft orbits the Earth, which in turn orbits the Sun, the spacecraft moving at high velocity. Because of its large field of view, this imparts a differential velocity aberration (i.e. targets at different parts of the detector have a different apparent motion.) `tesswcs` provides a static World Coordinate System solution at the mean time of the observation, which can not account for this differential velocity aberration. This can cause small (usually subpixel) apparent inaccuracies of the pointing over time. As such, `tesswcs` alone can not be used for astrometric measurements with TESS.
+
+## Updating `tesswcs`
+
+To update `tesswcs` with, for example, new pointing information, follow these steps:
+
+1. `git clone` this repository. Ensure that all your files are up to date with a `git pull` if you already have the repository.
+2. Update the required information (for example, update the pointings table in `src/tesswcs/data/pointings.csv')
+3. Locally, run the tests using the make file. You can run `make` or `make black`, `make isort`, `make pytest`. Check that everything passes.
+4. Update the version number. The **major** version number should be saved for significant API changes. The **patch** number is saved for automatic updates of the database when new TESS data is available. You should update the **minor** version number if you update the pointings table.
+5. Open a pull request against this repository, ensure tests pass online, and merge.
+6. Release a new version on github
+7. On your local machine, release a new version to pypi using `poetry build` and then `poetry publish`.
+8. Check the documentation using `make serve`. Update the documentation by running `make deploy`.
