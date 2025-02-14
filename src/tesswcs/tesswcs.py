@@ -7,8 +7,7 @@ from astropy.io import fits
 from astropy.wcs import WCS as astropyWCS
 from astropy.wcs import Sip
 
-from . import pointings, log  # noqa: E402
-from . import pixel_corners, rcolumns, rrows
+from . import log, pixel_corners, pointings, rcolumns, rrows  # noqa: E402
 from .utils import (
     _load_support_dicts,
     _load_warp_matrices,

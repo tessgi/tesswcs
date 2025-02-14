@@ -3,7 +3,7 @@ import os  # noqa
 
 PACKAGEDIR = os.path.abspath(os.path.dirname(__file__))
 
-from importlib.metadata import version, PackageNotFoundError  # noqa
+from importlib.metadata import PackageNotFoundError, version  # noqa
 
 
 def get_version():
