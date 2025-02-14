@@ -9,8 +9,8 @@ packages = [{include = "tesswcs", from = "src"}]
 [tool.poetry.dependencies]
 python = ">=3.9,<4.0"
 astropy = ">=5.0"
-tqdm = "^4.66.1"
-matplotlib = "^3.8.2"
+tqdm = ">=4.66.1"
+matplotlib = ">=3.8.2"
 tesscube = { version = "^1.0.4", optional = true }
 
 [tool.poetry.group.dev]
