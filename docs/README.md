@@ -92,3 +92,7 @@ To update `tesswcs` with, for example, new pointing information, follow these st
 6. Release a new version on github
 7. On your local machine, release a new version to pypi using `poetry build` and then `poetry publish`.
 8. Check the documentation using `make serve`. Update the documentation by running `make deploy`.
+
+## Changelog
+
+- v1.5.0 removes a bug identified by @ben-cassese and @jgagneastro where predicted sectors were mistakenly hard coded to only return Sector 3. Updating minor version number to reflect severity of this bug!
