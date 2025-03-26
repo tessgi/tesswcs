@@ -69,14 +69,18 @@ class WCS(astropyWCS):
             )
             return wcs
         else:
+            if sector not in pointings["Sector"]:
+                raise ValueError(
+                    f"Sector {sector} does not yet have predicted pointing information."
+                )
             log.warning(
                 f"Data for Sector {sector} has not been archived yet. This function will return the predicted WCS for Sector {sector}."
             )
             ra, dec, roll = [
                 i
-                for i in pointings[pointings["Sector"] == 3][["RA", "Dec", "Roll"]][
-                    0
-                ].values()
+                for i in pointings[pointings["Sector"] == sector][
+                    ["RA", "Dec", "Roll"]
+                ][0].values()
             ]
             wcs = cls.predict(
                 ra=ra, dec=dec, roll=roll, camera=camera, ccd=ccd, warp=True
