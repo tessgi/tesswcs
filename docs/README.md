@@ -85,9 +85,9 @@ Which will check if the input `astropy.coordinates.SkyCoord` object is observabl
 If you are interested in what interesting targets are available in a given TESS sector you can use
 
 ```python
-from tesswcs.locate import find_interesting_targets
+from tesswcs.locate import get_interesting_targets
 
-find_interesting_targets(sector=sector)
+get_interesting_targets(sector=sector)
 ```
 
 which will return a `pd.DataFrame` object containing astronomical targets with high numbers of paper references.
