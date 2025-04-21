@@ -218,12 +218,12 @@ def plot_geometry(ax=None):
             ax.plot(
                 ys[camera][ccd][s],
                 xs[camera][ccd][s],
-                c=f"C{camera-1}",
+                c=f"C{camera - 1}",
             )
             ax.scatter(
                 ys[camera][ccd].mean(),
                 xs[camera][ccd].mean(),
-                c=f"C{camera-1}",
+                c=f"C{camera - 1}",
             )
     lim = 60
     ax.set(

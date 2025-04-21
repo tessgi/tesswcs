@@ -3,11 +3,13 @@
 import warnings
 
 import numpy as np
+import pandas as pd
 from astropy.coordinates import SkyCoord
 from astropy.table import Table
 from astropy.time import Time
+from tqdm import tqdm
 
-from tesswcs import WCS, pointings
+from tesswcs import WCS, log, pointings
 
 from .utils import _load_wcs_database
 
@@ -250,3 +252,64 @@ def get_pixel_locations(
         names=["Target Index", "Sector", "Camera", "CCD", "Row", "Column"],
     )
     return pixel_locations
+
+
+def get_interesting_targets(sector, reflimit=50):
+    """For a given sector, find any astrophysical targets that have a lot of references.
+
+    This function queries Simbad for targets that fall within the given sector, and
+    returns any targets that have up to `reflimit` references.
+
+    Parameters:
+    -----------
+    sector: int
+        Sector number to search
+    reflimit: int
+        Number of references a target must have to be considered interesting.
+
+    Returns:
+    --------
+    result: pd.DataFrame
+        DataFrame containing all interesting targets.
+    """
+
+    from astroquery.simbad import Simbad
+
+    simbad = Simbad()
+    simbad.add_votable_fields("nbref", "otypedef", "V", "alltypes")
+
+    dfs = []
+    for camera in tqdm(
+        np.arange(1, 5), desc="Querying Cameras", position=0, leave=True
+    ):
+        for ccd in np.arange(1, 5):
+            previous_level = log.level
+            log.setLevel("CRITICAL")
+            wcs = WCS.from_sector(sector, camera, ccd)
+            log.setLevel(previous_level)
+            coordinate = SkyCoord(*wcs.wcs.crval, unit=("deg", "deg"))
+            radius = wcs.pixel_to_world(0, 0).separation(coordinate).deg
+            result_table = simbad.query_region(
+                coordinate, radius=f"{radius}d", criteria=f"nbref>{reflimit}"
+            )
+            k = wcs.footprint_contains(
+                SkyCoord(*result_table.to_pandas()[["ra", "dec"]].values.T, unit="deg")
+            )
+            result_table = result_table[k]
+            df = result_table.to_pandas()[
+                ["main_id", "ra", "dec", "V", "otypedef.otype_longname", "nbref"]
+            ].rename(
+                {"main_id": "id", "V": "Vmag", "otypedef.otype_longname": "otype"},
+                axis="columns",
+            )
+            df["camera"] = camera
+            df["ccd"] = ccd
+            df["planet"] = np.asarray(
+                [
+                    np.any(["Pl" in i0 for i0 in i.split("|")])
+                    for i in result_table.to_pandas()["alltypes.otypes"]
+                ]
+            ).astype(bool)
+            dfs.append(df)
+    df = pd.concat(dfs).sort_values("nbref", ascending=False).reset_index(drop=True)
+    return df

@@ -72,6 +72,26 @@ You can use tesswcs to better understand what sources will be obervable on TESS 
 
 ![Figure showing the predicted TESS WCS](figures/tess_1_predict.png)
 
+If you have a list of targets and you want to see if they are observable you can use
+
+```python
+from tesswcs.locate import check_observability
+
+check_observability(coords, sector=sector)
+```
+
+Which will check if the input `astropy.coordinates.SkyCoord` object is observable. This will be faster if you pass in a sector to check against .
+
+If you are interested in what interesting targets are available in a given TESS sector you can use
+
+```python
+from tesswcs.locate import find_interesting_targets
+
+find_interesting_targets(sector=sector)
+```
+
+which will return a `pd.DataFrame` object containing astronomical targets with high numbers of paper references.
+
 ## What's new?
 
 In version 1.2 and higher `tesswcs` now includes the expected pointing parameters for TESS EM3 (sectors 97-134). These are **expected** pointings and are subject to change. As TESS takes data `tesswcs` will be updated to replace the predicted WCS for future sectors with the measured WCS when data is archived.
