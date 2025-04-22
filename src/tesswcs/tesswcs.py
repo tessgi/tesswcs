@@ -55,7 +55,8 @@ class WCS(astropyWCS):
             wcs.ra = cls.wcs_dicts[sector]["ra"]
             wcs.dec = cls.wcs_dicts[sector]["dec"]
             wcs.roll = cls.wcs_dicts[sector]["roll"]
-            wcs.pixel_shape = (rrows, rcolumns)
+            # This looks wrong because wcs is column major
+            wcs.pixel_shape = (rcolumns, rrows)
             wcs.wcs.ctype = ["RA---TAN-SIP", "DEC--TAN-SIP"]
             wcs.wcs.cunit = ["deg", "deg"]
             wcs.wcs.radesys = "ICRS"
