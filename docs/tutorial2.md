@@ -1,6 +1,6 @@
 # Using `tesswcs` to find observable targets
 
-`tesswcs` has some convenience functions to help you find out which targets are observable with TESS. The `get_pixel_locations` functon will accept sky coordinates, and return a table of which sector, camera, CCD, row, and column those targets fall on (if any). 
+`tesswcs` has some convenience functions to help you find out which targets are observable with TESS. The `get_pixel_locations` function will accept sky coordinates, and return a table of which sector, camera, CCD, row, and column those targets fall on (if any). 
 
 Let's take a look at how to use it. 
 
