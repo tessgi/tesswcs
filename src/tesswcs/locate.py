@@ -1,6 +1,7 @@
 """Convenience functions to help locate sources"""
 
 import warnings
+from typing import Union, Optional
 
 import numpy as np
 import pandas as pd
@@ -114,7 +115,10 @@ def get_observability_mask(wcs: WCS, coords: SkyCoord):
 
 
 def check_observability(
-    coords: SkyCoord, sector: int = None, cycle: int = None, time: Time = None
+    coords: Union[list[SkyCoord], SkyCoord],
+    sector: Optional[int] = None,
+    cycle: Optional[int] = None,
+    time: Optional[Time] = None,
 ) -> Table:
     """Checks whether an input set of SkyCoord objects are observable by TESS
 
@@ -185,7 +189,10 @@ def check_observability(
 
 
 def get_pixel_locations(
-    coords: SkyCoord, sector: int = None, cycle: int = None, time: Time = None
+    coords: Union[list[SkyCoord], SkyCoord],
+    sector: Optional[int] = None,
+    cycle: Optional[int] = None,
+    time: Optional[Time] = None,
 ) -> Table:
     """Obtains the pixel locations of any sources in `coords` that fall on a TESS pixel.
 
