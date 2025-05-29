@@ -262,7 +262,7 @@ confirmed_exoplanets_table[target_index]
 
 ## Example 2: Finding whether a transient will be observable with TESS
 
-Sometimes we might find an interesting transient, and we want to know whether it will fall on a TESS pixel so that we can recover the optical time-series when the data is downlinked. For example, [GRB 231106A](https://gcn.nasa.gov/circulars/34956) occured in November 2023 and happened to be observable during the TESS survey. 
+Sometimes we might find an interesting transient, and we want to know whether it will fall on a TESS pixel so that we can recover the optical time-series when the data is downlinked. For example, [GRB 231106A](https://gcn.nasa.gov/circulars/34956) occurred in November 2023 and happened to be observable during the TESS survey. 
 
 Here we show how we would find out if a transient has been (or will be) observable with TESS. 
 
