@@ -385,7 +385,7 @@ for camera in np.arange(1, 5):
 
 ## Creating a WCS based on an RA, Dec, and Roll
 
-Sometimes we may want to obtain a WCS for a theoretical pointing of the spacecraft. To do so you can easily add your own boresight RA, Dec, and Roll. Below I show the same proceedure as above for a random pointing.
+Sometimes we may want to obtain a WCS for a theoretical pointing of the spacecraft. To do so you can easily add your own boresight RA, Dec, and Roll. Below I show the same procedure as above for a random pointing.
 
 
 ```python
