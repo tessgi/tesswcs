@@ -7,11 +7,10 @@ from astropy.io import fits
 from astropy.wcs import WCS as astropyWCS
 from astropy.wcs import Sip
 
-from . import log, pixel_corners, pointings, rcolumns, rrows  # noqa: E402
+from . import log, pixel_corners, pointings, rcolumns, rrows, wcs_dicts  # noqa: E402
 from .utils import (
     _load_support_dicts,
     _load_warp_matrices,
-    _load_wcs_database,
     angle_to_matrix,
     deprecated,
     get_M,
@@ -23,8 +22,6 @@ class WCS(astropyWCS):
 
     This class allows us to add attributes to the WCS header and add class methods
     """
-
-    wcs_dicts = _load_wcs_database()
 
     (
         xs,
@@ -49,21 +46,21 @@ class WCS(astropyWCS):
     @classmethod
     def from_sector(cls, sector: int, camera: int, ccd: int):
         """Load a WCS from archival TESS data"""
-        if sector in list(cls.wcs_dicts.keys()):
+        if sector in list(wcs_dicts.keys()):
             wcs = cls(naxis=2)
             wcs.sector, wcs.camera, wcs.ccd = sector, camera, ccd
-            wcs.ra = cls.wcs_dicts[sector]["ra"]
-            wcs.dec = cls.wcs_dicts[sector]["dec"]
-            wcs.roll = cls.wcs_dicts[sector]["roll"]
+            wcs.ra = wcs_dicts[sector]["ra"]
+            wcs.dec = wcs_dicts[sector]["dec"]
+            wcs.roll = wcs_dicts[sector]["roll"]
             # This looks wrong because wcs is column major
             wcs.pixel_shape = (rcolumns, rrows)
             wcs.wcs.ctype = ["RA---TAN-SIP", "DEC--TAN-SIP"]
             wcs.wcs.cunit = ["deg", "deg"]
             wcs.wcs.radesys = "ICRS"
-            wcs.wcs.crpix = cls.wcs_dicts[sector][camera][ccd]["crpix0"]
-            wcs.wcs.crval = cls.wcs_dicts[sector][camera][ccd]["crval0"]
+            wcs.wcs.crpix = wcs_dicts[sector][camera][ccd]["crpix0"]
+            wcs.wcs.crval = wcs_dicts[sector][camera][ccd]["crval0"]
             wcs.wcs.cdelt = [1, 1]
-            wcs.wcs.pc = cls.wcs_dicts[sector][camera][ccd]["cd"]
+            wcs.wcs.pc = wcs_dicts[sector][camera][ccd]["cd"]
             wcs.sip = Sip(
                 *[cls.sip_dict[attr][camera][ccd] for attr in ["a", "b", "ap", "bp"]],
                 [1045, 1001],

@@ -11,8 +11,8 @@ from astropy.coordinates import Angle, SkyCoord
 from botocore.exceptions import ClientError
 from tqdm import tqdm
 
-from . import PACKAGEDIR, log, pixel_corners, pointings, rcolumns, rrows
-from .utils import _load_wcs_database, get_M
+from . import PACKAGEDIR, log, pixel_corners, pointings, rcolumns, rrows, wcs_dicts
+from .utils import get_M
 
 
 def update_database():
@@ -22,7 +22,6 @@ def update_database():
 
 def _build_support_dicts():
     """This function creates dictionaries of the best fitting CCD coordinates and SIP polynomials"""
-    wcs_dicts = _load_wcs_database()
     # Contains the corners of each CCD w.r.t the boresight
     xs, ys = (
         {
@@ -298,8 +297,6 @@ def _build_warp_matrices(plot=False):
         3: {1: [], 2: [], 3: [], 4: []},
         4: {1: [], 2: [], 3: [], 4: []},
     }
-
-    wcs_dicts = _load_wcs_database()
 
     for sector in tqdm(wcs_dicts.keys()):
         if plot:

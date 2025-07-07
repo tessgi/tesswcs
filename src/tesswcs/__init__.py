@@ -24,6 +24,8 @@ log = logging.getLogger("tesswcs")
 import numpy as np  # noqa: E402
 from astropy.table import Table  # noqa: E402
 
+from .utils import _load_wcs_database  # noqa: E402, F401
+
 pointings = Table.read(f"{PACKAGEDIR}/data/pointings.csv", encoding="utf-8-sig")
 
 # Real rows and columns in a CCD
@@ -48,7 +50,7 @@ pixel_corners = np.array(
     ]
 ) * np.asarray((rrows, rcolumns))
 
-from .tesswcs import WCS  # noqa: E402, F401
-from .utils import _load_wcs_database  # noqa: E402, F401
-
+wcs_dicts = _load_wcs_database()
 latest_sector = np.max(list(_load_wcs_database().keys()))
+
+from .tesswcs import WCS  # noqa: E402, F401

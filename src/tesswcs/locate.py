@@ -1,7 +1,7 @@
 """Convenience functions to help locate sources"""
 
 import warnings
-from typing import Union, Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -12,7 +12,7 @@ from tqdm import tqdm
 
 from tesswcs import WCS, log, pointings
 
-from .utils import _load_wcs_database
+from . import wcs_dicts
 
 
 def _process_input_parameters(coords, sector=None, cycle=None, time=None):
@@ -209,7 +209,6 @@ def get_pixel_locations(
     """
     coords, sector_mask = _process_input_parameters(coords, sector, cycle, time)
     target_ids, sectors, cameras, ccds, rows, columns = [], [], [], [], [], []
-    wcs_dicts = _load_wcs_database()
     for sector, ra, dec, roll in pointings[sector_mask][
         ["Sector", "RA", "Dec", "Roll"]
     ]:
