@@ -1,7 +1,7 @@
 """Convenience functions to help locate sources"""
 
 import warnings
-from typing import Union, Optional
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -217,7 +217,7 @@ def get_pixel_locations(
             for ccd in np.arange(1, 5):
                 # wcs = WCS.predict(ra, dec, roll, camera, ccd)
                 if sector in wcs_dicts.keys():
-                    wcs = WCS.from_archive(sector, camera, ccd)
+                    wcs = WCS.from_sector(sector, camera, ccd)
                 else:
                     wcs = WCS.predict(ra, dec, roll, camera, ccd)
                 with warnings.catch_warnings():
