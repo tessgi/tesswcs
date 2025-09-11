@@ -5,7 +5,7 @@ from astropy.table import Table
 from astropy.time import Time
 
 from tesswcs.locate import check_observability, get_pixel_locations
-
+from tesswcs import pointings
 
 def test_locate():
     t = Time("2023-11-06T18:13:23Z")
@@ -73,6 +73,27 @@ def test_pixel_location_skycoord_array():
     assert pixel_locations["Target Index"][0] == 0
 
     assert pixel_locations["Sector"][1] == 6
+    assert pixel_locations["Camera"][1] == 4
+    assert pixel_locations["CCD"][1] == 3
+    assert pixel_locations["Target Index"][1] == 2
+
+def test_locate_by_pointing():
+    # Pass a pointing to get_pixel_locations and check_observability to get visibility
+    
+    #Use the observability check from test_pixel_location_skycoord_array(), but manually input S6 pointing
+    point = (92.0096, -30.5839, 178.6367)
+    coordinates = ["97.09679 -65.57931", "124.53176 -68.313", "83.86658 -69.2696"]
+    c = SkyCoord(coordinates, frame="icrs", unit=u.deg)
+
+    pixel_locations = get_pixel_locations(c, pointing=point)
+
+    assert len(pixel_locations) == 2
+    assert pixel_locations["Sector"][0] == 0
+    assert pixel_locations["Camera"][0] == 4
+    assert pixel_locations["CCD"][0] == 1
+    assert pixel_locations["Target Index"][0] == 0
+
+    assert pixel_locations["Sector"][1] == 0
     assert pixel_locations["Camera"][1] == 4
     assert pixel_locations["CCD"][1] == 3
     assert pixel_locations["Target Index"][1] == 2

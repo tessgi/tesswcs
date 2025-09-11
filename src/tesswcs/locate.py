@@ -15,7 +15,7 @@ from tesswcs import WCS, log, pointings
 from .utils import _load_wcs_database
 
 
-def _process_input_parameters(coords, sector=None, cycle=None, time=None):
+def _process_input_parameters(coords, sector=None, cycle=None, time=None, pointing=None):
     if not isinstance(coords, (SkyCoord, list)):
         raise ValueError("Must pass a SkyCoord object")
     if isinstance(coords, list):
@@ -25,28 +25,49 @@ def _process_input_parameters(coords, sector=None, cycle=None, time=None):
     if coords.isscalar:
         coords = SkyCoord([coords])
 
-    num_args_set = sum(arg is not None for arg in [sector, cycle, time])
+    num_args_set = sum(arg is not None for arg in [sector, cycle, time, pointing])
     if num_args_set > 1:
         raise ValueError("Only one of 'sector', 'cycle', or 'time' can be set")
+    if pointing is None:
+        sector_times = [
+            Time(pointings["Start"], format="jd"),
+            Time(pointings["End"], format="jd"),
+        ]
+        sector_mask = np.ones(len(pointings), bool)
+        if time is not None:
+            sector_mask = (time > sector_times[0]) & (time < sector_times[1])
+        elif sector is not None:
+            sector_mask = np.in1d(pointings["Sector"], sector)
+        elif cycle is not None:
+            sector_mask = np.in1d(pointings["Cycle"], cycle)
 
-    sector_times = [
-        Time(pointings["Start"], format="jd"),
-        Time(pointings["End"], format="jd"),
-    ]
-    sector_mask = np.ones(len(pointings), bool)
-    if time is not None:
-        sector_mask = (time > sector_times[0]) & (time < sector_times[1])
-    elif sector is not None:
-        sector_mask = np.in1d(pointings["Sector"], sector)
-    elif cycle is not None:
-        sector_mask = np.in1d(pointings["Cycle"], cycle)
+        if sector_mask.sum() == 0:
+            raise ValueError(
+                "No past or planned TESS observations found in that 'sector', 'cycle', or 'time'"
+            )
 
-    if sector_mask.sum() == 0:
-        raise ValueError(
-            "No past or planned TESS observations found in that 'sector', 'cycle', or 'time'"
-        )
+        sector_info = pointings[sector_mask][["Sector", "RA", "Dec", "Roll"]]
+    
+    else:
+        if((np.ndim(pointing) == 1) and (len(pointing) == 3)):
+            sector_info = Table.from_pandas(pd.DataFrame({
+                "Sector":0,
+                "RA":pointing[0],
+                "Dec":pointing[1],
+                "Roll":pointing[2],
+            }, index=[0]))
+                
+        elif ((np.ndim(pointing) == 2) and (np.shape(pointing)[1] == 3)):
+            sector_info = Table.from_pandas(pd.DataFrame({
+                "Sector":0,
+                "RA":[item[0] for item in pointing],
+                "Dec":[item[1] for item in pointing],
+                "Roll":[item[2] for item in pointing],
+            }))
+        else:
+             raise ValueError("Pointing must be a tuple of length 3 (RA, Dec, Roll) or a list of tuples (of length 3)")
 
-    return coords, sector_mask
+    return coords, sector_info
 
 
 def get_observability_mask(wcs: WCS, coords: SkyCoord):
@@ -119,6 +140,7 @@ def check_observability(
     sector: Optional[int] = None,
     cycle: Optional[int] = None,
     time: Optional[Time] = None,
+    pointing: Optional[Union[list[tuple], tuple]] = None,
 ) -> Table:
     """Checks whether an input set of SkyCoord objects are observable by TESS
 
@@ -132,12 +154,12 @@ def check_observability(
         Optional list of cycles to narrow down search to
     time: astropy.time.Time
         Optional time to narrow down search. If a time is passed, will only search sector that encompasses that time.
+    pointing: tuple, list of tuples, optional
+        Optional RA, DEC, Roll pointings to
     """
-    coords, sector_mask = _process_input_parameters(coords, sector, cycle, time)
+    coords, sector_info = _process_input_parameters(coords, sector, cycle, time, pointing)
     observable = {}
-    for sector, ra, dec, roll in pointings[sector_mask][
-        ["Sector", "RA", "Dec", "Roll"]
-    ]:
+    for sector, ra, dec, roll in sector_info:
         observable[sector] = {}
         for camera in np.arange(1, 5):
             observable[sector][camera] = {}
@@ -193,6 +215,7 @@ def get_pixel_locations(
     sector: Optional[int] = None,
     cycle: Optional[int] = None,
     time: Optional[Time] = None,
+    pointing: Optional[Union[list[tuple], tuple]] = None,
 ) -> Table:
     """Obtains the pixel locations of any sources in `coords` that fall on a TESS pixel.
 
@@ -206,13 +229,13 @@ def get_pixel_locations(
         Optional list of cycles to narrow down search to
     time: astropy.time.Time
         Optional time to narrow down search. If a time is passed, will only search sector that encompasses that time.
+    pointing: tuple, list of tuples, optional
+        Optional RA, DEC, Roll pointings to
     """
-    coords, sector_mask = _process_input_parameters(coords, sector, cycle, time)
+    coords, sector_info = _process_input_parameters(coords, sector, cycle, time, pointing)
     target_ids, sectors, cameras, ccds, rows, columns = [], [], [], [], [], []
     wcs_dicts = _load_wcs_database()
-    for sector, ra, dec, roll in pointings[sector_mask][
-        ["Sector", "RA", "Dec", "Roll"]
-    ]:
+    for sector, ra, dec, roll in sector_info:
         for camera in np.arange(1, 5):
             for ccd in np.arange(1, 5):
                 # wcs = WCS.predict(ra, dec, roll, camera, ccd)
