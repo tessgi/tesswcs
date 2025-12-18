@@ -76,3 +76,52 @@ def test_pixel_location_skycoord_array():
     assert pixel_locations["Camera"][1] == 4
     assert pixel_locations["CCD"][1] == 3
     assert pixel_locations["Target Index"][1] == 2
+
+
+def test_sector_with_alt_pointing():
+    # time during regularly scheduled sector
+    t = Time("2026-1-10T18:13:23Z")
+    c = SkyCoord(217.42891667, -62.67948889, unit="degree")
+    observable = check_observability(c, time=t)
+    sector, camera, ccd, _ = np.asarray(observable[observable["targ_0001"]])[0]
+
+    assert sum(observable["targ_0001"]) == 1
+    assert sector == 99
+    assert camera == 4
+    assert ccd == 4
+
+    pixel_locations = get_pixel_locations(c, time=t)
+    assert len(pixel_locations) == 1
+    assert pixel_locations["Sector"][0] == 99
+
+    # test coordinate in alt pointing
+    c = SkyCoord(110.4916, 22.8424, unit="degree")
+    observable = check_observability(c, time=t)
+    assert not any(observable["targ_0001"])
+
+
+def test_during_alt_pointing():
+    # time in middle of alt pointing
+    t = Time("2026-1-20T18:13:23Z")
+
+    # test coordinate for regularly scheduled sector
+    c = SkyCoord(217.42891667, -62.67948889, unit="degree")
+    observable = check_observability(c, time=t)
+    assert not any(observable["targ_0001"])
+
+    pixel_locations = get_pixel_locations(c, time=t)
+    assert len(pixel_locations) == 0
+
+    # test coordinate in alt pointing
+    c = SkyCoord(110.4916, 22.8424, unit="degree")
+    observable = check_observability(c, time=t)
+    sector, camera, ccd, _ = np.asarray(observable[observable["targ_0001"]])[0]
+
+    assert sum(observable["targ_0001"]) == 1
+    assert sector == 1751
+    assert camera == 2
+    assert ccd == 1
+
+    pixel_locations = get_pixel_locations(c, time=t)
+    assert len(pixel_locations) == 1
+    assert pixel_locations["Sector"][0] == 1751

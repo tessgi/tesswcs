@@ -45,7 +45,7 @@ def test_utils():
     angle = 10
     M = angle_to_matrix(angle)
     assert M.shape == (2, 2)
-    assert angle_from_matrix(M) == angle
+    assert np.isclose(angle_from_matrix(M), angle)
 
 
 @pytest.mark.skip
