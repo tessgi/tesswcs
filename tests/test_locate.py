@@ -77,6 +77,7 @@ def test_pixel_location_skycoord_array():
     assert pixel_locations["CCD"][1] == 3
     assert pixel_locations["Target Index"][1] == 2
 
+
 def test_sector_with_alt_pointing():
     # time during regularly scheduled sector
     t = Time("2026-1-10T18:13:23Z")
@@ -97,6 +98,7 @@ def test_sector_with_alt_pointing():
     c = SkyCoord(110.4916, 22.8424, unit="degree")
     observable = check_observability(c, time=t)
     assert not any(observable["targ_0001"])
+
 
 def test_during_alt_pointing():
     # time in middle of alt pointing

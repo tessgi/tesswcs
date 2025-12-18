@@ -37,7 +37,7 @@ def _process_input_parameters(coords, sector=None, cycle=None, time=None):
     if time is not None:
         sector_mask = (time > sector_times[0]) & (time < sector_times[1])
         if any(pointings["Sector"][sector_mask] > 1750):
-            # Special pointings can occur within a standard sector, these are 
+            # Special pointings can occur within a standard sector, these are
             # given special sector designations starting with 1751.
             # Regular sector data does not exist during these times.
             sector_mask = (pointings["Sector"] > 1750) & sector_mask
@@ -45,8 +45,6 @@ def _process_input_parameters(coords, sector=None, cycle=None, time=None):
         sector_mask = np.in1d(pointings["Sector"], sector)
     elif cycle is not None:
         sector_mask = np.in1d(pointings["Cycle"], cycle)
-
-
 
     if sector_mask.sum() == 0:
         raise ValueError(
