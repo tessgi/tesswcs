@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "tesswcs"
-version = "1.8.8"
+version = "1.8.9"
 description = ""
 authors = ["Christina Hedges <christina.l.hedges@nasa.gov>"]
 readme = "docs/README.md"
