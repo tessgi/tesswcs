@@ -55,7 +55,6 @@ class WCS(astropyWCS):
             wcs.ra = cls.wcs_dicts[sector]["ra"]
             wcs.dec = cls.wcs_dicts[sector]["dec"]
             wcs.roll = cls.wcs_dicts[sector]["roll"]
-            # This looks wrong because wcs is column major
             wcs.pixel_shape = (rcolumns, rrows)
             wcs.wcs.ctype = ["RA---TAN-SIP", "DEC--TAN-SIP"]
             wcs.wcs.cunit = ["deg", "deg"]
@@ -118,7 +117,7 @@ class WCS(astropyWCS):
         # initialize object
         wcs = cls(naxis=2)
         wcs.ra, wcs.dec, wcs.roll, wcs.camera, wcs.ccd = ra, dec, roll, camera, ccd
-        wcs.pixel_shape = (rrows, rcolumns)
+        wcs.pixel_shape = (rcolumns, rrows)
 
         # center of the CCD
         xc, yc = cls.xcent[camera][ccd], cls.ycent[camera][ccd]
