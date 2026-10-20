@@ -7,7 +7,7 @@ from astropy.io import fits
 from astropy.wcs import WCS as astropyWCS
 from astropy.wcs import Sip
 
-from . import log, pixel_corners, pointings, rcolumns, rrows  # noqa: E402
+from . import log, pixel_corners, pointings, rcolumns, rrows, CRPIX  # noqa: E402
 from .utils import (
     _load_support_dicts,
     _load_warp_matrices,
@@ -66,7 +66,7 @@ class WCS(astropyWCS):
             wcs.wcs.pc = cls.wcs_dicts[sector][camera][ccd]["cd"]
             wcs.sip = Sip(
                 *[cls.sip_dict[attr][camera][ccd] for attr in ["a", "b", "ap", "bp"]],
-                [1045, 1001],
+                cls.wcs_dicts[sector][camera][ccd]["crpix0"],
             )
             return wcs
         else:
@@ -131,13 +131,13 @@ class WCS(astropyWCS):
         wcs.wcs.cunit = ["deg", "deg"]
         wcs.wcs.radesys = "ICRS"
         #        wcs.wcs.crpix = np.asarray([rrows / 2, rcolumns / 2])
-        wcs.wcs.crpix = np.asarray([1045, 1001])
+        wcs.wcs.crpix = np.asarray(CRPIX)
         wcs.wcs.cdelt = [-1, 1]
         # center is the ccd center in world space
         wcs.wcs.crval = [c_ccd.ra.deg, c_ccd.dec.deg]
         wcs.sip = Sip(
             *[cls.sip_dict[attr][camera][ccd] for attr in ["a", "b", "ap", "bp"]],
-            [1045, 1001],
+            CRPIX,
         )
         # rotate the corners of the CCD to the correct roll
         x, y = R.dot(np.vstack([cls.xs[camera][ccd], cls.ys[camera][ccd]]))

@@ -32,6 +32,9 @@ rrows, rcolumns = (2078, 2136)
 # pixel size in mm
 pixel_size = 0.015
 
+# tesswcs fixed CRPIX
+CRPIX = [1045, 1001]
+
 # pixel scale in degrees
 pixel_scale = 21 / 3600
 
@@ -48,7 +51,7 @@ pixel_corners = np.array(
     ]
 ) * np.asarray((rrows, rcolumns))
 
-from .tesswcs import WCS  # noqa: E402, F401
-from .utils import _load_wcs_database  # noqa: E402, F401
+# from .tesswcs import WCS  # noqa: E402, F401
+# from .utils import _load_wcs_database  # noqa: E402, F401
 
-latest_sector = np.max(list(_load_wcs_database().keys()))
+# latest_sector = np.max(list(_load_wcs_database().keys()))

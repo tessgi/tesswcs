@@ -3,6 +3,7 @@
 import bz2
 import functools
 import json
+import math
 import os
 import warnings
 
@@ -83,6 +84,8 @@ def _load_wcs_database():
                     ],
                     "crval0": wcs_dict[sector][camera][ccd]["crval0"],
                     "crpix0": wcs_dict[sector][camera][ccd]["crpix0"],
+                    "crval_hdr": wcs_dict[sector][camera][ccd]["crval_hdr"],
+                    "crpix_hdr": wcs_dict[sector][camera][ccd]["crpix_hdr"],
                     "cd": np.asarray(wcs_dict[sector][camera][ccd]["cd"]),
                     "sip_a_order": wcs_dict[sector][camera][ccd]["sip_a_order"],
                     "sip_a": np.asarray(wcs_dict[sector][camera][ccd]["sip_a"]),
@@ -142,7 +145,7 @@ def _load_warp_matrices():
     log.debug("Loading warp matrices dictionary from file")
     filename = f"{PACKAGEDIR}/data/TESS_wcs_Ms.json.bz2"
     if not os.path.isfile(filename):
-        log.warn(
+        log.warning(
             "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
         )
         return None, None
@@ -151,7 +154,7 @@ def _load_warp_matrices():
     Ms = {int(key): _fix_keys(dict) for key, dict in Ms.items()}
     filename = f"{PACKAGEDIR}/data/TESS_wcs_offset_weights.json.bz2"
     if not os.path.isfile(filename):
-        log.warn(
+        log.warning(
             "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
         )
         return None, None
@@ -234,3 +237,48 @@ def plot_geometry(ax=None):
         title="TESS Observatory Geometry",
     )
     return ax
+
+
+def correct_sip_matrix(coeff_matrix, dx, dy):
+    """
+    Shifts a SIP polynomial coefficient matrix to a new reference pixel origin.
+
+    Parameters
+    ----------
+    coeff_matrix : numpy.ndarray
+        A 2D array of SIP coefficients (A, B, AP, or BP) where the index [p, q]
+        corresponds to the coefficient for u^p * v^q.
+    dx : float
+        The offset in the x-axis (new_CRPIX1 - old_CRPIX1).
+    dy : float
+        The offset in the y-axis (new_CRPIX2 - old_CRPIX2).
+
+    Returns
+    -------
+    numpy.ndarray
+        The shifted 2D coefficient matrix aligned to the old reference pixel.
+    """
+    if coeff_matrix is None:
+        return None
+
+    # The polynomial order is defined by the matrix bounds
+    order = coeff_matrix.shape[0] - 1
+    corrected_matrix = np.zeros_like(coeff_matrix, dtype=float)
+
+    for i in range(order + 1):
+        for j in range(order + 1 - i):
+            val = 0.0
+            for p in range(i, order + 1):
+                for q in range(j, order + 1 - p):
+                    # Only calculate valid terms up to the matrix's polynomial order
+                    if p + q <= order:
+                        val += (
+                            coeff_matrix[p, q]
+                            * math.comb(p, i)
+                            * math.comb(q, j)
+                            * ((-dx) ** (p - i))
+                            * ((-dy) ** (q - j))
+                        )
+            corrected_matrix[i, j] = val
+
+    return corrected_matrix

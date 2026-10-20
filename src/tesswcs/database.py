@@ -11,8 +11,8 @@ from astropy.coordinates import Angle, SkyCoord
 from botocore.exceptions import ClientError
 from tqdm import tqdm
 
-from . import PACKAGEDIR, log, pixel_corners, pointings, rcolumns, rrows
-from .utils import _load_wcs_database, get_M
+from . import PACKAGEDIR, log, pixel_corners, pointings, rcolumns, rrows, CRPIX
+from .utils import _load_wcs_database, get_M, correct_sip_matrix
 
 
 def update_database():
@@ -68,6 +68,7 @@ def _build_support_dicts():
                 xs[camera][ccd].append(x)
                 ys[camera][ccd].append(y)
 
+                # these are between spacecraft pointing and CCD reference pixel
                 phi, r = (
                     wcs_dicts[sector][camera][ccd]["pa"]
                     + wcs_dicts[sector]["roll"] * u.deg,
@@ -94,7 +95,7 @@ def _build_support_dicts():
             int(camera): {
                 int(ccd): np.mean(
                     [
-                        wcs_dicts[int(sector)][int(camera)][int(ccd)][f"sip_{attr}"]
+                        wcs_dicts[sector][camera][ccd][f"sip_{attr}"]
                         for sector in wcs_dicts.keys()
                         if wcs_dicts[sector][camera][ccd]["sip_a_order"] == 4
                     ],
@@ -104,6 +105,8 @@ def _build_support_dicts():
             }
             for camera in np.arange(1, 5)
         }
+    # JMP: I think M is not used anywhere else in tesswcs
+    log.debug("Building Support data.")
     M = {1: {}, 2: {}, 3: {}, 4: {}}
     for camera in np.arange(1, 5):
         for ccd in np.arange(1, 5):
@@ -113,7 +116,9 @@ def _build_support_dicts():
                     ys[camera][ccd] - ycent[camera][ccd],
                 ]
             )
-            approx = (pixel_corners - [1045, 1001]).T
+            # JMP: should the pixel center be hardcoded or read from the wcs_dict?
+            # CRPIX change in the FFI since sector 91
+            approx = (pixel_corners - CRPIX).T
             M[int(camera)][int(ccd)] = get_M(truth.T, approx.T).tolist()
 
     for var in ["xs", "ys", "xcent", "ycent", "sip", "M"]:
@@ -145,7 +150,7 @@ def _add_sector_data(sector, c0):
                 # Data does not exist in cloud for this sector.
                 return None
         for idx in range(4):
-            crpix = [1045, 1001]
+            crpix = CRPIX
             crval = SkyCoord(
                 *wcss[idx].wcs_pix2world([crpix], 0)[0],
                 unit="deg",
@@ -156,12 +161,30 @@ def _add_sector_data(sector, c0):
             # phi = pa.rad
             # x, y = r * np.cos(phi), r * np.sin(phi)
 
+            crpix_hdr = wcss[idx].wcs.crpix.tolist()
+            crval_hdr = wcss[idx].wcs.crval.tolist()
+
             crval_sip = SkyCoord(
                 *wcss[idx].all_pix2world([crpix], 0)[0],
                 unit="deg",
             )
             sep_sip = c0.separation(crval_sip)
             pa_sip = c0.position_angle(crval_sip)
+
+            sips = wcss[idx].sip
+            # transform SIP matrices if CRPIX in header does not match expected CRPIX
+            if crpix_hdr != crpix:
+                log.warning(
+                    f"CRPIX in header ({crpix_hdr}) does not match expected CRPIX ({crpix}). "
+                    "Correcting SIP matrices accordingly.",
+                )
+                dx = crpix[0] - crpix_hdr[0]
+                dy = crpix[1] - crpix_hdr[1]
+                _a = correct_sip_matrix(sips.a, dx, dy)
+                _b = correct_sip_matrix(sips.b, dx, dy)
+                _ap = correct_sip_matrix(sips.ap, dx, dy)
+                _bp = correct_sip_matrix(sips.bp, dx, dy)
+                wcs.sip = Sip(_a, _b, _ap, _bp, crpix)
 
             sector_dict[cam][idx + 1] = {
                 "pa": pa.rad,
@@ -171,25 +194,27 @@ def _add_sector_data(sector, c0):
                 "ccd_center_crval": [crval.ra.deg, crval.dec.deg],
                 "ccd_center_crval_sip": [crval_sip.ra.deg, crval_sip.dec.deg],
                 "ccd_center_crpix": crpix,
-                "crval0": list(wcss[idx].wcs.crval),
-                "crpix0": list(wcss[idx].wcs.crpix),
+                "crval0": crval,
+                "crpix0": crpix,
+                "crpix_hdr": crpix_hdr,
+                "crval_hdr": crval_hdr,
                 "cd": [list(wcss[idx].wcs.cd[jdx]) for jdx in range(2)],
-                "sip_a_order": wcss[idx].sip.a_order,
+                "sip_a_order": sips.a_order,
                 "sip_a": [
-                    list(wcss[idx].sip.a[jdx])
-                    for jdx in range(wcss[idx].sip.a.shape[0])
+                    list(sips.a[jdx])
+                    for jdx in range(sips.a.shape[0])
                 ],
                 "sip_b": [
-                    list(wcss[idx].sip.b[jdx])
-                    for jdx in range(wcss[idx].sip.b.shape[0])
+                    list(sips.b[jdx])
+                    for jdx in range(sips.b.shape[0])
                 ],
                 "sip_ap": [
-                    list(wcss[idx].sip.ap[jdx])
-                    for jdx in range(wcss[idx].sip.ap.shape[0])
+                    list(sips.ap[jdx])
+                    for jdx in range(sips.ap.shape[0])
                 ],
                 "sip_bp": [
-                    list(wcss[idx].sip.bp[jdx])
-                    for jdx in range(wcss[idx].sip.bp.shape[0])
+                    list(sips.bp[jdx])
+                    for jdx in range(sips.bp.shape[0])
                 ],
             }
             corners = SkyCoord(
@@ -278,13 +303,15 @@ def _build_warp_matrices(plot=False):
 
     This function works by building the true, archival WCS, and then comparing with the
     predicted WCS. We find the sky projected points in each case, and then find the transformation
-    matrix that makes the predicted sky coordinates match the true sky coordinates. We then translate
-    those warped coordinates back to pixel space using the predicted WCS. We can fit the warp between the
-    new pixel space and the true pixel grid, to find the small change that needs to be applied to our PC matrix.
+    matrix that makes the predicted sky coordinates match the true sky coordinates.
+    We then translate those warped coordinates back to pixel space using the predicted WCS.
+    We can fit the warp between the new pixel space and the true pixel grid,
+    to find the small change that needs to be applied to our PC matrix.
 
     We also find the change in CRPIX (offset term) that is best fit for each pointing.
 
-    This term is a strong function of the roll angle w.r.t the ecliptic, so we specify a delta CRPIX as a function of the ecliptic roll.
+    This term is a strong function of the roll angle w.r.t the ecliptic,
+    so we specify a delta CRPIX as a function of the ecliptic roll.
     """
     from .tesswcs import WCS
 
@@ -301,7 +328,7 @@ def _build_warp_matrices(plot=False):
 
     wcs_dicts = _load_wcs_database()
 
-    for sector in tqdm(wcs_dicts.keys()):
+    for sector in tqdm(wcs_dicts.keys(), desc="Building warp matrices"):
         if plot:
             fig, ax = plt.subplots(4, 4, figsize=(10, 10), sharex=True, sharey=True)
         for camera in np.arange(1, 5):
@@ -309,6 +336,8 @@ def _build_warp_matrices(plot=False):
                 wcs_t = WCS.from_sector(sector=sector, camera=camera, ccd=ccd)
                 truth = wcs_t.wcs_pix2world(np.asarray([R.ravel(), C.ravel()]).T, 0)
 
+                # JMP: predicts assumes CRPIX is the same for all sectors, but the FFI
+                # ref pixel changed in sector 91. Therefore this Ms could be wrong onwards.
                 wcs_c = WCS.predict(
                     ra=wcs_t.ra,
                     dec=wcs_t.dec,
