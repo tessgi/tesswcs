@@ -51,7 +51,7 @@ pixel_corners = np.array(
     ]
 ) * np.asarray((rrows, rcolumns))
 
-# from .tesswcs import WCS  # noqa: E402, F401
-# from .utils import _load_wcs_database  # noqa: E402, F401
+from .tesswcs import WCS  # noqa: E402, F401
+from .utils import _load_wcs_database  # noqa: E402, F401
 
-# latest_sector = np.max(list(_load_wcs_database().keys()))
+latest_sector = np.max(list(_load_wcs_database().keys()))

@@ -8,6 +8,7 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
+from astropy.wcs import Sip
 from botocore.exceptions import ClientError
 from tqdm import tqdm
 
@@ -184,7 +185,7 @@ def _add_sector_data(sector, c0):
                 _b = correct_sip_matrix(sips.b, dx, dy)
                 _ap = correct_sip_matrix(sips.ap, dx, dy)
                 _bp = correct_sip_matrix(sips.bp, dx, dy)
-                wcs.sip = Sip(_a, _b, _ap, _bp, crpix)
+                sips = Sip(_a, _b, _ap, _bp, crpix)
 
             sector_dict[cam][idx + 1] = {
                 "pa": pa.rad,
@@ -194,28 +195,16 @@ def _add_sector_data(sector, c0):
                 "ccd_center_crval": [crval.ra.deg, crval.dec.deg],
                 "ccd_center_crval_sip": [crval_sip.ra.deg, crval_sip.dec.deg],
                 "ccd_center_crpix": crpix,
-                "crval0": crval,
+                "crval0": [crval.ra.deg, crval.dec.deg],
                 "crpix0": crpix,
                 "crpix_hdr": crpix_hdr,
                 "crval_hdr": crval_hdr,
                 "cd": [list(wcss[idx].wcs.cd[jdx]) for jdx in range(2)],
                 "sip_a_order": sips.a_order,
-                "sip_a": [
-                    list(sips.a[jdx])
-                    for jdx in range(sips.a.shape[0])
-                ],
-                "sip_b": [
-                    list(sips.b[jdx])
-                    for jdx in range(sips.b.shape[0])
-                ],
-                "sip_ap": [
-                    list(sips.ap[jdx])
-                    for jdx in range(sips.ap.shape[0])
-                ],
-                "sip_bp": [
-                    list(sips.bp[jdx])
-                    for jdx in range(sips.bp.shape[0])
-                ],
+                "sip_a": [list(sips.a[jdx]) for jdx in range(sips.a.shape[0])],
+                "sip_b": [list(sips.b[jdx]) for jdx in range(sips.b.shape[0])],
+                "sip_ap": [list(sips.ap[jdx]) for jdx in range(sips.ap.shape[0])],
+                "sip_bp": [list(sips.bp[jdx]) for jdx in range(sips.bp.shape[0])],
             }
             corners = SkyCoord(
                 [
