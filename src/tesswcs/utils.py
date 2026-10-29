@@ -118,6 +118,25 @@ def _load_wcs_database():
     return _wcs_dicts
 
 
+def _parse_epoch_dict(d):
+    """Parses a nested dict which may either be epoch-indexed [epoch][cam][ccd]
+    or legacy [cam][ccd]. Returns integer-keyed [epoch][cam][ccd].
+    """
+    first_val = next(iter(d.values()))
+    if isinstance(first_val, dict) and isinstance(next(iter(first_val.values())), dict):
+        # 3 levels: epoch -> cam -> ccd
+        return {
+            int(epoch): {
+                int(cam): _fix_keys(ccd_dict) for cam, ccd_dict in cam_dict.items()
+            }
+            for epoch, cam_dict in d.items()
+        }
+    else:
+        # Legacy 2 levels: cam -> ccd -> wrap in epoch 1
+        legacy = {int(cam): _fix_keys(ccd_dict) for cam, ccd_dict in d.items()}
+        return {1: legacy}
+
+
 def _load_support_dicts():
     log.debug("Loading support dictionaries from file")
 
@@ -127,16 +146,18 @@ def _load_support_dicts():
         filename = f"{PACKAGEDIR}/data/TESS_wcs_{var}.json.bz2"
         with bz2.open(filename, "rt", encoding="utf-8") as f:
             support_dict = json.load(f)
-        support_dict = {int(key): _fix_keys(dict) for key, dict in support_dict.items()}
+        if var in ["xcent", "ycent"]:
+            support_dict = _parse_epoch_dict(support_dict)
+        else:
+            support_dict = {
+                int(key): _fix_keys(dict) for key, dict in support_dict.items()
+            }
         support_dicts.append(support_dict)
 
     filename = f"{PACKAGEDIR}/data/TESS_wcs_sip.json.bz2"
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         sip = json.load(f)
-    sip_dict = {
-        key: _fix_keys({int(key): _fix_keys(dict) for key, dict in sip_dict.items()})
-        for key, sip_dict in sip.items()
-    }
+    sip_dict = {attr: _parse_epoch_dict(attr_dict) for attr, attr_dict in sip.items()}
     support_dicts.append(sip_dict)
     return support_dicts
 
@@ -241,7 +262,15 @@ def plot_geometry(ax=None):
 
 def correct_sip_matrix(coeff_matrix, dx, dy):
     """
-    Shifts a SIP polynomial coefficient matrix to a new reference pixel origin.
+    Shifts a SIP polynomial coefficient matrix to a new reference pixel origin
+    using binomial expansion (Option 2: perturbation theory).
+
+    Note for future reference:
+    In standard SIP, shifting the reference origin also generates non-zero constant
+    terms (which must be absorbed into CRVAL) and linear distortion terms (which must
+    be absorbed into the CD matrix). Furthermore, the inverse polynomials AP and BP
+    operate on intermediate distorted coordinates, so full coordinate frame translation
+    requires updating CD and refitting AP/BP.
 
     Parameters
     ----------
@@ -256,7 +285,7 @@ def correct_sip_matrix(coeff_matrix, dx, dy):
     Returns
     -------
     numpy.ndarray
-        The shifted 2D coefficient matrix aligned to the old reference pixel.
+        The shifted 2D coefficient matrix aligned to the new reference pixel.
     """
     if coeff_matrix is None:
         return None

@@ -8,12 +8,24 @@ import astropy.units as u
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.coordinates import Angle, SkyCoord
-from astropy.wcs import Sip
-from botocore.exceptions import ClientError
+
+try:
+    from botocore.exceptions import ClientError
+except ImportError:
+    ClientError = Exception
 from tqdm import tqdm
 
-from . import PACKAGEDIR, log, pixel_corners, pointings, rcolumns, rrows, CRPIX
-from .utils import _load_wcs_database, get_M, correct_sip_matrix
+from . import (
+    CRPIX,
+    PACKAGEDIR,
+    get_epoch,
+    log,
+    pixel_corners,
+    pointings,
+    rcolumns,
+    rrows,
+)
+from .utils import _load_wcs_database, get_M
 
 
 def update_database():
@@ -25,40 +37,24 @@ def _build_support_dicts():
     """This function creates dictionaries of the best fitting CCD coordinates and SIP polynomials"""
     wcs_dicts = _load_wcs_database()
     # Contains the corners of each CCD w.r.t the boresight
-    xs, ys = (
-        {
-            1: {1: [], 2: [], 3: [], 4: []},
-            2: {1: [], 2: [], 3: [], 4: []},
-            3: {1: [], 2: [], 3: [], 4: []},
-            4: {1: [], 2: [], 3: [], 4: []},
-        },
-        {
-            1: {1: [], 2: [], 3: [], 4: []},
-            2: {1: [], 2: [], 3: [], 4: []},
-            3: {1: [], 2: [], 3: [], 4: []},
-            4: {1: [], 2: [], 3: [], 4: []},
-        },
-    )
+    xs = {c: {ccd: [] for ccd in range(1, 5)} for c in range(1, 5)}
+    ys = {c: {ccd: [] for ccd in range(1, 5)} for c in range(1, 5)}
 
-    # Contains the center of each CCD w.r.t the boresight
-    xcent, ycent = (
-        {
-            1: {1: [], 2: [], 3: [], 4: []},
-            2: {1: [], 2: [], 3: [], 4: []},
-            3: {1: [], 2: [], 3: [], 4: []},
-            4: {1: [], 2: [], 3: [], 4: []},
-        },
-        {
-            1: {1: [], 2: [], 3: [], 4: []},
-            2: {1: [], 2: [], 3: [], 4: []},
-            3: {1: [], 2: [], 3: [], 4: []},
-            4: {1: [], 2: [], 3: [], 4: []},
-        },
-    )
+    epochs = [1, 2]
+    xcent = {
+        e: {c: {ccd: [] for ccd in range(1, 5)} for c in range(1, 5)} for e in epochs
+    }
+    ycent = {
+        e: {c: {ccd: [] for ccd in range(1, 5)} for c in range(1, 5)} for e in epochs
+    }
+
     log.debug("Building camera/CCD data.")
     for camera in np.arange(1, 5):
+        camera = int(camera)
         for ccd in np.arange(1, 5):
+            ccd = int(ccd)
             for sector in wcs_dicts.keys():
+                sector = int(sector)
                 phi, r = (
                     wcs_dicts[sector][camera][ccd]["corner_pa"]
                     + wcs_dicts[sector]["roll"] * u.deg,
@@ -69,58 +65,71 @@ def _build_support_dicts():
                 xs[camera][ccd].append(x)
                 ys[camera][ccd].append(y)
 
-                # these are between spacecraft pointing and CCD reference pixel
-                phi, r = (
-                    wcs_dicts[sector][camera][ccd]["pa"]
-                    + wcs_dicts[sector]["roll"] * u.deg,
-                    wcs_dicts[sector][camera][ccd]["sep"].deg,
-                )
+                epoch = get_epoch(sector)
+                if epoch == 1:
+                    phi = Angle(
+                        wcs_dicts[sector][camera][ccd]["pa"]
+                        + wcs_dicts[sector]["roll"] * u.deg
+                    )
+                    r = wcs_dicts[sector][camera][ccd]["sep"].deg
+                else:
+                    c0 = SkyCoord(
+                        wcs_dicts[sector]["ra"], wcs_dicts[sector]["dec"], unit="deg"
+                    )
+                    c_hdr = SkyCoord(
+                        *wcs_dicts[sector][camera][ccd]["crval_hdr"], unit="deg"
+                    )
+                    r = c0.separation(c_hdr).deg
+                    phi = Angle(
+                        c0.position_angle(c_hdr) + wcs_dicts[sector]["roll"] * u.deg
+                    )
                 x, y = r * np.cos(phi.rad), r * np.sin(phi.rad)
-                xcent[camera][ccd].append(x)
-                ycent[camera][ccd].append(y)
+                xcent[epoch][camera][ccd].append(x)
+                ycent[epoch][camera][ccd].append(y)
 
-            xs[int(camera)][int(ccd)] = list(
-                np.mean(xs[camera][ccd], axis=0)
-            )  # / pixel_scale
-            ys[int(camera)][int(ccd)] = list(
-                np.mean(ys[camera][ccd], axis=0)
-            )  # / pixel_scale
+            xs[camera][ccd] = list(np.mean(xs[camera][ccd], axis=0))
+            ys[camera][ccd] = list(np.mean(ys[camera][ccd], axis=0))
 
-            # This needs to be the crpix of the camera
-            xcent[int(camera)][int(ccd)] = np.mean(xcent[camera][ccd])  # / pixel_scale
-            ycent[int(camera)][int(ccd)] = np.mean(ycent[camera][ccd])  # / pixel_scale
+            for epoch in epochs:
+                xcent[epoch][camera][ccd] = float(np.mean(xcent[epoch][camera][ccd]))
+                ycent[epoch][camera][ccd] = float(np.mean(ycent[epoch][camera][ccd]))
+
     log.debug("Building SIP data.")
     sip = {}
     for attr in ["a", "b", "ap", "bp"]:
         sip[str(attr)] = {
-            int(camera): {
-                int(ccd): np.mean(
-                    [
-                        wcs_dicts[sector][camera][ccd][f"sip_{attr}"]
-                        for sector in wcs_dicts.keys()
-                        if wcs_dicts[sector][camera][ccd]["sip_a_order"] == 4
-                    ],
-                    axis=0,
-                ).tolist()
-                for ccd in np.arange(1, 5)
+            epoch: {
+                int(camera): {
+                    int(ccd): np.mean(
+                        [
+                            wcs_dicts[sector][camera][ccd][f"sip_{attr}"]
+                            for sector in wcs_dicts.keys()
+                            if wcs_dicts[sector][camera][ccd]["sip_a_order"] == 4
+                            and get_epoch(int(sector)) == epoch
+                        ],
+                        axis=0,
+                    ).tolist()
+                    for ccd in np.arange(1, 5)
+                }
+                for camera in np.arange(1, 5)
             }
-            for camera in np.arange(1, 5)
+            for epoch in epochs
         }
-    # JMP: I think M is not used anywhere else in tesswcs
+
     log.debug("Building Support data.")
     M = {1: {}, 2: {}, 3: {}, 4: {}}
     for camera in np.arange(1, 5):
+        camera = int(camera)
         for ccd in np.arange(1, 5):
+            ccd = int(ccd)
             truth = np.asarray(
                 [
-                    xs[camera][ccd] - xcent[camera][ccd],
-                    ys[camera][ccd] - ycent[camera][ccd],
+                    np.asarray(xs[camera][ccd]) - xcent[1][camera][ccd],
+                    np.asarray(ys[camera][ccd]) - ycent[1][camera][ccd],
                 ]
             )
-            # JMP: should the pixel center be hardcoded or read from the wcs_dict?
-            # CRPIX change in the FFI since sector 91
             approx = (pixel_corners - CRPIX).T
-            M[int(camera)][int(ccd)] = get_M(truth.T, approx.T).tolist()
+            M[camera][ccd] = get_M(truth.T, approx.T).tolist()
 
     for var in ["xs", "ys", "xcent", "ycent", "sip", "M"]:
         filename = f"{PACKAGEDIR}/data/TESS_wcs_{var}.json.bz2"
@@ -174,18 +183,18 @@ def _add_sector_data(sector, c0):
 
             sips = wcss[idx].sip
             # transform SIP matrices if CRPIX in header does not match expected CRPIX
-            if crpix_hdr != crpix:
-                log.warning(
-                    f"CRPIX in header ({crpix_hdr}) does not match expected CRPIX ({crpix}). "
-                    "Correcting SIP matrices accordingly.",
-                )
-                dx = crpix[0] - crpix_hdr[0]
-                dy = crpix[1] - crpix_hdr[1]
-                _a = correct_sip_matrix(sips.a, dx, dy)
-                _b = correct_sip_matrix(sips.b, dx, dy)
-                _ap = correct_sip_matrix(sips.ap, dx, dy)
-                _bp = correct_sip_matrix(sips.bp, dx, dy)
-                sips = Sip(_a, _b, _ap, _bp, crpix)
+            # if crpix_hdr != crpix:
+            #     log.warning(
+            #         f"CRPIX in header ({crpix_hdr}) does not match expected CRPIX ({crpix}). "
+            #         "Correcting SIP matrices accordingly.",
+            #     )
+            #     dx = crpix[0] - crpix_hdr[0]
+            #     dy = crpix[1] - crpix_hdr[1]
+            #     _a = correct_sip_matrix(sips.a, dx, dy)
+            #     _b = correct_sip_matrix(sips.b, dx, dy)
+            #     _ap = correct_sip_matrix(sips.ap, dx, dy)
+            #     _bp = correct_sip_matrix(sips.bp, dx, dy)
+            #     sips = Sip(_a, _b, _ap, _bp, crpix)
 
             sector_dict[cam][idx + 1] = {
                 "pa": pa.rad,
@@ -325,14 +334,13 @@ def _build_warp_matrices(plot=False):
                 wcs_t = WCS.from_sector(sector=sector, camera=camera, ccd=ccd)
                 truth = wcs_t.wcs_pix2world(np.asarray([R.ravel(), C.ravel()]).T, 0)
 
-                # JMP: predicts assumes CRPIX is the same for all sectors, but the FFI
-                # ref pixel changed in sector 91. Therefore this Ms could be wrong onwards.
                 wcs_c = WCS.predict(
                     ra=wcs_t.ra,
                     dec=wcs_t.dec,
                     roll=wcs_t.roll,
                     camera=wcs_t.camera,
                     ccd=wcs_t.ccd,
+                    sector=sector,
                     warp=False,
                 )
                 prediction = wcs_c.wcs_pix2world(

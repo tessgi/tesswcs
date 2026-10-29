@@ -8,12 +8,22 @@ from astropy.io import fits
 from astropy.wcs import WCS as astropyWCS
 from tqdm import tqdm
 
-from tesswcs import PACKAGEDIR, WCS, pointings, rcolumns, rrows
+from tesswcs import (
+    CRPIX_EPOCHS,
+    PACKAGEDIR,
+    WCS,
+    get_crpix,
+    get_epoch,
+    pointings,
+    rcolumns,
+    rrows,
+)
 from tesswcs.utils import (
     _load_support_dicts,
     _load_wcs_database,
     angle_from_matrix,
     angle_to_matrix,
+    correct_sip_matrix,
     footprint,
     plot_geometry,
 )
@@ -230,3 +240,64 @@ def test_comprable():
             dpi=150,
             bbox_inches="tight",
         )
+
+
+def test_dual_epochs():
+    """Verify dual-epoch support for reference pixels and SIP coefficients."""
+    # Check helper functions
+    assert CRPIX_EPOCHS[1] == [1045, 1001]
+    assert CRPIX_EPOCHS[2] == [1069, 1025]
+    assert get_epoch(1) == 1
+    assert get_epoch(90) == 1
+    assert get_epoch(91) == 2
+    assert get_epoch(109) == 2
+
+    assert get_crpix(1) == [1045, 1001]
+    assert get_crpix(90) == [1045, 1001]
+    assert get_crpix(91) == [1069, 1025]
+    assert get_crpix(109) == [1069, 1025]
+
+    # Archival WCS for Epoch 1 (Sector 1)
+    wcs1 = WCS.from_sector(sector=1, camera=1, ccd=1)
+    assert np.allclose(wcs1.wcs.crpix, [1045, 1001])
+    assert np.allclose(wcs1.sip.crpix, [1045, 1001])
+
+    # Archival WCS for Epoch 2 (Sector 92)
+    wcs92 = WCS.from_sector(sector=92, camera=1, ccd=1)
+    assert np.allclose(wcs92.wcs.crpix, [1069, 1025])
+    assert np.allclose(wcs92.sip.crpix, [1069, 1025])
+
+    # Predict WCS with default (Epoch 1) vs sector specified
+    ra, dec, roll = wcs1.ra, wcs1.dec, wcs1.roll
+    wcs_pred_default = WCS.predict(
+        ra=ra, dec=dec, roll=roll, camera=1, ccd=1, warp=False
+    )
+    assert np.allclose(wcs_pred_default.wcs.crpix, [1045, 1001])
+
+    wcs_pred_s92 = WCS.predict(
+        ra=wcs92.ra,
+        dec=wcs92.dec,
+        roll=wcs92.roll,
+        camera=1,
+        ccd=1,
+        sector=92,
+        warp=False,
+    )
+    assert np.allclose(wcs_pred_s92.wcs.crpix, [1069, 1025])
+    assert np.allclose(wcs_pred_s92.sip.crpix, [1069, 1025])
+
+    # Verify Sector 92 prediction aligns closely with archival WCS
+    coords_arch = wcs92.pixel_to_world([500, 1069, 1500], [500, 1025, 1500])
+    coords_pred = wcs_pred_s92.pixel_to_world([500, 1069, 1500], [500, 1025, 1500])
+    sep_pixels = (
+        coords_arch.separation(coords_pred).to(u.arcsecond) / (21 * u.arcsecond)
+    ).value
+    # Without warp, prediction is within normal optical unwrapped threshold (< 10 pixels)
+    assert (sep_pixels < 10).all()
+
+    # Verify Option 2 function correct_sip_matrix is preserved and callable
+    mat = np.zeros((5, 5))
+    mat[2, 0] = 1e-5
+    shifted = correct_sip_matrix(mat, 24, 24)
+    assert shifted is not None
+    assert shifted.shape == (5, 5)
