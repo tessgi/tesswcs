@@ -182,19 +182,6 @@ def _add_sector_data(sector, c0):
             pa_sip = c0.position_angle(crval_sip)
 
             sips = wcss[idx].sip
-            # transform SIP matrices if CRPIX in header does not match expected CRPIX
-            # if crpix_hdr != crpix:
-            #     log.warning(
-            #         f"CRPIX in header ({crpix_hdr}) does not match expected CRPIX ({crpix}). "
-            #         "Correcting SIP matrices accordingly.",
-            #     )
-            #     dx = crpix[0] - crpix_hdr[0]
-            #     dy = crpix[1] - crpix_hdr[1]
-            #     _a = correct_sip_matrix(sips.a, dx, dy)
-            #     _b = correct_sip_matrix(sips.b, dx, dy)
-            #     _ap = correct_sip_matrix(sips.ap, dx, dy)
-            #     _bp = correct_sip_matrix(sips.bp, dx, dy)
-            #     sips = Sip(_a, _b, _ap, _bp, crpix)
 
             sector_dict[cam][idx + 1] = {
                 "pa": pa.rad,
