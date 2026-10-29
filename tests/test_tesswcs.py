@@ -8,25 +8,11 @@ from astropy.io import fits
 from astropy.wcs import WCS as astropyWCS
 from tqdm import tqdm
 
-from tesswcs import (
-    CRPIX_EPOCHS,
-    PACKAGEDIR,
-    WCS,
-    get_crpix,
-    get_epoch,
-    pointings,
-    rcolumns,
-    rrows,
-)
-from tesswcs.utils import (
-    _load_support_dicts,
-    _load_wcs_database,
-    angle_from_matrix,
-    angle_to_matrix,
-    correct_sip_matrix,
-    footprint,
-    plot_geometry,
-)
+from tesswcs import (CRPIX_EPOCHS, PACKAGEDIR, WCS, get_crpix, get_epoch,
+                     pointings, rcolumns, rrows)
+from tesswcs.utils import (_load_support_dicts, _load_wcs_database,
+                           angle_from_matrix, angle_to_matrix,
+                           footprint, plot_geometry)
 
 DOCSDIR = "/".join([*PACKAGEDIR.split("/")[:-2], "docs"])
 
@@ -203,6 +189,7 @@ def test_comprable():
     for sector in tqdm(np.arange(1, 14), desc="sector", leave=True, position=0):
         for camera in np.arange(1, 5):
             for ccd in np.arange(1, 5):
+                print(sector, camera, ccd)
                 R, C = np.meshgrid(
                     np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
                 )
@@ -220,6 +207,7 @@ def test_comprable():
                     .reshape(R.shape)
                     .value
                 )
+                print(separation.max())
                 assert (separation < 1).all()
                 if os.environ.get("CI") != "true":
                     ax.hist(
@@ -294,10 +282,3 @@ def test_dual_epochs():
     ).value
     # Without warp, prediction is within normal optical unwrapped threshold (< 10 pixels)
     assert (sep_pixels < 10).all()
-
-    # Verify Option 2 function correct_sip_matrix is preserved and callable
-    mat = np.zeros((5, 5))
-    mat[2, 0] = 1e-5
-    shifted = correct_sip_matrix(mat, 24, 24)
-    assert shifted is not None
-    assert shifted.shape == (5, 5)

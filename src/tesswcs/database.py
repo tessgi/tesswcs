@@ -15,16 +15,8 @@ except ImportError:
     ClientError = Exception
 from tqdm import tqdm
 
-from . import (
-    CRPIX,
-    PACKAGEDIR,
-    get_epoch,
-    log,
-    pixel_corners,
-    pointings,
-    rcolumns,
-    rrows,
-)
+from . import (CRPIX, PACKAGEDIR, get_epoch, log, pixel_corners, pointings,
+               rcolumns, rrows)
 from .utils import _load_wcs_database, get_M
 
 

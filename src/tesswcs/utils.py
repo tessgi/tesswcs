@@ -3,7 +3,6 @@
 import bz2
 import functools
 import json
-import math
 import os
 import warnings
 

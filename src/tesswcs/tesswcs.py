@@ -8,15 +8,10 @@ from astropy.wcs import WCS as astropyWCS
 from astropy.wcs import Sip
 
 from . import log  # noqa: E402
-from . import CRPIX_EPOCHS, get_epoch, pixel_corners, pointings, rcolumns, rrows
-from .utils import (
-    _load_support_dicts,
-    _load_warp_matrices,
-    _load_wcs_database,
-    angle_to_matrix,
-    deprecated,
-    get_M,
-)
+from . import (CRPIX_EPOCHS, get_epoch, pixel_corners, pointings, rcolumns,
+               rrows)
+from .utils import (_load_support_dicts, _load_warp_matrices,
+                    _load_wcs_database, angle_to_matrix, deprecated, get_M)
 
 
 class WCS(astropyWCS):

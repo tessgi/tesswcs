@@ -52,16 +52,6 @@ def get_crpix(sector: int) -> list[int]:
     return CRPIX_EPOCHS[get_epoch(sector)]
 
 
-
-def get_epoch(sector: int) -> int:
-    """Return the epoch index (1 for sectors <= 90, 2 for sectors >= 91)."""
-    return 1 if int(sector) <= 90 else 2
-
-
-def get_crpix(sector: int) -> list[int]:
-    """Return nominal reference pixel for a given sector."""
-    return CRPIX_EPOCHS[get_epoch(sector)]
-
 # pixel scale in degrees
 pixel_scale = 21 / 3600
 
