@@ -194,10 +194,12 @@ class WCS(astropyWCS):
             np.asarray([[0.0593726, 0.00123252], [0.00123252, 0.0593726]]) * (C)
         )
         if warp:
-            wcs.wcs.pc = wcs.wcs.pc.dot(cls.Ms[camera][ccd])
+            Ms = cls.Ms.get(epoch, cls.Ms.get(1))
+            offset_weights = cls.offset_weights.get(epoch, cls.offset_weights.get(1))
+            wcs.wcs.pc = wcs.wcs.pc.dot(Ms[camera][ccd])
             ecl_roll = wcs.ecl_roll.rad
             X = np.asarray([np.sin(ecl_roll), np.cos(ecl_roll), 1])
-            wcs.wcs.crpix += X.dot(cls.offset_weights[camera][ccd])
+            wcs.wcs.crpix += X.dot(offset_weights[camera][ccd])
         return wcs
 
     def to_header(self, key=None):

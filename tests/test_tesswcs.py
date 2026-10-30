@@ -11,8 +11,8 @@ from tqdm import tqdm
 from tesswcs import (CRPIX_EPOCHS, PACKAGEDIR, WCS, get_crpix, get_epoch,
                      pointings, rcolumns, rrows)
 from tesswcs.utils import (_load_support_dicts, _load_wcs_database,
-                           angle_from_matrix, angle_to_matrix,
-                           footprint, plot_geometry)
+                           angle_from_matrix, angle_to_matrix, footprint,
+                           plot_geometry)
 
 DOCSDIR = "/".join([*PACKAGEDIR.split("/")[:-2], "docs"])
 
@@ -158,7 +158,12 @@ def test_comprable():
     wcs = WCS.from_sector(sector=sector, camera=camera, ccd=ccd)
     truth = wcs.pixel_to_world(R.ravel(), C.ravel())
     prediction = WCS.predict(
-        ra=wcs.ra, dec=wcs.dec, roll=wcs.roll, camera=wcs.camera, ccd=wcs.ccd
+        ra=wcs.ra,
+        dec=wcs.dec,
+        roll=wcs.roll,
+        camera=wcs.camera,
+        ccd=wcs.ccd,
+        sector=sector,
     ).pixel_to_world(R.ravel(), C.ravel())
     separation = (
         (truth.separation(prediction).to(u.arcsecond) / (21 * u.arcsecond))
@@ -189,7 +194,6 @@ def test_comprable():
     for sector in tqdm(np.arange(1, 14), desc="sector", leave=True, position=0):
         for camera in np.arange(1, 5):
             for ccd in np.arange(1, 5):
-                print(sector, camera, ccd)
                 R, C = np.meshgrid(
                     np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
                 )
@@ -201,13 +205,13 @@ def test_comprable():
                     roll=wcs.roll,
                     camera=wcs.camera,
                     ccd=wcs.ccd,
+                    sector=sector,
                 ).pixel_to_world(R.ravel(), C.ravel())
                 separation = (
                     (truth.separation(prediction).to(u.arcsecond) / (21 * u.arcsecond))
                     .reshape(R.shape)
                     .value
                 )
-                print(separation.max())
                 assert (separation < 1).all()
                 if os.environ.get("CI") != "true":
                     ax.hist(

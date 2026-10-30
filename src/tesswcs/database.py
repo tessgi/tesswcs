@@ -58,23 +58,16 @@ def _build_support_dicts():
                 ys[camera][ccd].append(y)
 
                 epoch = get_epoch(sector)
-                if epoch == 1:
-                    phi = Angle(
-                        wcs_dicts[sector][camera][ccd]["pa"]
-                        + wcs_dicts[sector]["roll"] * u.deg
-                    )
-                    r = wcs_dicts[sector][camera][ccd]["sep"].deg
-                else:
-                    c0 = SkyCoord(
-                        wcs_dicts[sector]["ra"], wcs_dicts[sector]["dec"], unit="deg"
-                    )
-                    c_hdr = SkyCoord(
-                        *wcs_dicts[sector][camera][ccd]["crval_hdr"], unit="deg"
-                    )
-                    r = c0.separation(c_hdr).deg
-                    phi = Angle(
-                        c0.position_angle(c_hdr) + wcs_dicts[sector]["roll"] * u.deg
-                    )
+                c0 = SkyCoord(
+                    wcs_dicts[sector]["ra"], wcs_dicts[sector]["dec"], unit="deg"
+                )
+                c_hdr = SkyCoord(
+                    *wcs_dicts[sector][camera][ccd]["crval_hdr"], unit="deg"
+                )
+                r = c0.separation(c_hdr).deg
+                phi = Angle(
+                    c0.position_angle(c_hdr) + wcs_dicts[sector]["roll"] * u.deg
+                )
                 x, y = r * np.cos(phi.rad), r * np.sin(phi.rad)
                 xcent[epoch][camera][ccd].append(x)
                 ycent[epoch][camera][ccd].append(y)
@@ -296,16 +289,16 @@ def _build_warp_matrices(plot=False):
         np.arange(0, rrows, 10), np.arange(0, rcolumns, 10), indexing="ij"
     )
 
+    epochs = [1, 2]
     Ms = {
-        1: {1: [], 2: [], 3: [], 4: []},
-        2: {1: [], 2: [], 3: [], 4: []},
-        3: {1: [], 2: [], 3: [], 4: []},
-        4: {1: [], 2: [], 3: [], 4: []},
+        epoch: {c: {ccd: [] for ccd in range(1, 5)} for c in range(1, 5)}
+        for epoch in epochs
     }
 
     wcs_dicts = _load_wcs_database()
 
     for sector in tqdm(wcs_dicts.keys(), desc="Building warp matrices"):
+        epoch = get_epoch(sector)
         if plot:
             fig, ax = plt.subplots(4, 4, figsize=(10, 10), sharex=True, sharey=True)
         for camera in np.arange(1, 5):
@@ -381,42 +374,54 @@ def _build_warp_matrices(plot=False):
                         R, C, sep, vmin=0, vmax=3 * 21 / 3600
                     )
                     ax[camera - 1][ccd - 1].set(title=f"Camera {camera}, CCD {ccd}")
-                Ms[int(camera)][int(ccd)].append(M2.copy().tolist())
+                Ms[epoch][int(camera)][int(ccd)].append(M2.copy().tolist())
 
-    ra = np.asarray([wcs_dicts[sdx]["ra"] for sdx in wcs_dicts.keys()])
-    dec = np.asarray([wcs_dicts[sdx]["dec"] for sdx in wcs_dicts.keys()])
-    roll = np.asarray([wcs_dicts[sdx]["roll"] for sdx in wcs_dicts.keys()])
-
-    c = SkyCoord(ra, dec, unit="deg")
-    ecl = c.transform_to("geocentricmeanecliptic")
-
-    # The roll angle w.r.t the ecliptic plane
-    ecl_roll = ecl.position_angle(
-        c.directional_offset_by(-roll * u.deg, 1 * u.arcsecond).transform_to(
-            "geocentricmeanecliptic"
-        )
-    )
-
-    X = np.asarray([np.sin(ecl_roll), np.cos(ecl_roll), roll**0]).T
-
-    offset_weights = {
-        int(camera): {
-            int(ccd): np.linalg.solve(
-                X.T.dot(X), X.T.dot(np.asarray(Ms[camera][ccd])[:, :2, 2])
-            ).tolist()
-            for ccd in np.arange(1, 5)
-        }
-        for camera in np.arange(1, 5)
+    sectors_by_epoch = {
+        epoch: [sdx for sdx in wcs_dicts.keys() if get_epoch(sdx) == epoch]
+        for epoch in epochs
     }
 
-    for camera in np.arange(1, 5):
-        for ccd in np.arange(1, 5):
-            Ms[int(camera)][int(ccd)] = np.median(Ms[camera][ccd], axis=0)[
-                :2, :2
-            ].tolist()
+    offset_weights = {}
+    Ms_final = {}
+    for epoch in epochs:
+        epoch_sectors = sectors_by_epoch[epoch]
+        ra = np.asarray([wcs_dicts[sdx]["ra"] for sdx in epoch_sectors])
+        dec = np.asarray([wcs_dicts[sdx]["dec"] for sdx in epoch_sectors])
+        roll = np.asarray([wcs_dicts[sdx]["roll"] for sdx in epoch_sectors])
+
+        c = SkyCoord(ra, dec, unit="deg")
+        ecl = c.transform_to("geocentricmeanecliptic")
+
+        # The roll angle w.r.t the ecliptic plane
+        ecl_roll = ecl.position_angle(
+            c.directional_offset_by(-roll * u.deg, 1 * u.arcsecond).transform_to(
+                "geocentricmeanecliptic"
+            )
+        )
+
+        X = np.asarray([np.sin(ecl_roll), np.cos(ecl_roll), roll**0]).T
+
+        offset_weights[epoch] = {
+            int(camera): {
+                int(ccd): np.linalg.solve(
+                    X.T.dot(X),
+                    X.T.dot(np.asarray(Ms[epoch][camera][ccd])[:, :2, 2]),
+                ).tolist()
+                for ccd in np.arange(1, 5)
+            }
+            for camera in np.arange(1, 5)
+        }
+
+        Ms_final[epoch] = {
+            int(camera): {
+                int(ccd): np.median(Ms[epoch][camera][ccd], axis=0)[:2, :2].tolist()
+                for ccd in np.arange(1, 5)
+            }
+            for camera in np.arange(1, 5)
+        }
 
     filename = f"{PACKAGEDIR}/data/TESS_wcs_Ms.json.bz2"
-    json_data = json.dumps(Ms)
+    json_data = json.dumps(Ms_final)
     with bz2.open(filename, "wt", encoding="utf-8") as f:
         f.write(json_data)
 

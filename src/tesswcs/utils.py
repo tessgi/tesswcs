@@ -171,7 +171,7 @@ def _load_warp_matrices():
         return None, None
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         Ms = json.load(f)
-    Ms = {int(key): _fix_keys(dict) for key, dict in Ms.items()}
+    Ms = _parse_epoch_dict(Ms)
     filename = f"{PACKAGEDIR}/data/TESS_wcs_offset_weights.json.bz2"
     if not os.path.isfile(filename):
         log.warning(
@@ -180,7 +180,7 @@ def _load_warp_matrices():
         return None, None
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         offset_weights = json.load(f)
-    offset_weights = {int(key): _fix_keys(dict) for key, dict in offset_weights.items()}
+    offset_weights = _parse_epoch_dict(offset_weights)
     return Ms, offset_weights
 
 
