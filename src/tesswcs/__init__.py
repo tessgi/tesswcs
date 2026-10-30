@@ -25,6 +25,9 @@ import numpy as np  # noqa: E402
 from astropy.table import Table  # noqa: E402
 
 pointings = Table.read(f"{PACKAGEDIR}/data/pointings.csv", encoding="utf-8-sig")
+# sort pointings table by cycle and start date to make sure sector 1751 (3I/Atlas)
+# is in Cycle 8 between 99 and 100
+pointings.sort(keys=["Cycle", "Start"])
 
 # Real rows and columns in a CCD
 rrows, rcolumns = (2078, 2136)
