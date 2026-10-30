@@ -120,3 +120,8 @@ To update `tesswcs` with, for example, new pointing information, follow these st
 - v.1.8.0 added special TESS 3I/ATLAS pointings, functionality to handle non-sequential interrupting observations
 - v1.9.0 added Cycle 10 pointings
 - v1.10.0 Major changes include: fixing the change in pixel reference for the FFI WCS produced by SPOC since sector 91 and archiving sector 1751. Minor changes include a bug in the col/row order used for WCS identified by @ben-cassese, documentation updates noted by @altuson and @jorgemarpa
+
+
+## AI-Assisted Code Disclaimer
+
+Portions of this code were generated or refined using AI models. All code has been reviewed and tested by human developers for correctness and project requirements. Use at your own risk.
