@@ -41,7 +41,7 @@ CDELT : -1.0 1.0
 NAXIS : 2078  2136
 ```
 
-This returns an `astropy` World Coordinate System object so you can use all the features of `astropy`. For example, using `astropy`'s WCS interface you can now either work with this object, for example you can obtain the sky position of row and column positions
+This returns an `astropy` World Coordinate System object. This WCS has a PC matrix from the requested sector FFI headers, but SIP (Simple Imaging Polynomial) coefficients averaged across all available TESS sectors. This provides more accurate distortion correction, particularly in the corners of TESS's large FoV. All built-in features of `astropy`'s WCS are available, for example you can obtain the sky coordinates of row and column positions
 
 ```python
 wcs.pixel_to_world(row, column)
@@ -115,6 +115,7 @@ To update `tesswcs` with, for example, new pointing information, follow these st
 
 ## Changelog
 
+- v1.10.0 Major changes include: fixing the change in pixel reference for the FFI WCS produced by SPOC since sector 91 and archiving sector 1751. Minor changes include a bug in the col/row order used for WCS identified by @ben-cassese, documentation updates noted by @altuson and @jorgemarpa.
 - v1.5.0 removes a bug identified by @ben-cassese and @jgagneastro where predicted sectors were mistakenly hard coded to only return Sector 3. Updating minor version number to reflect severity of this bug!
 - v.1.6.1 removes a bug identified by @altuson where the shape of the detector was row major not column major
 - v.1.8.0 added special TESS 3I/ATLAS pointings, functionality to handle non-sequential interrupting observations
