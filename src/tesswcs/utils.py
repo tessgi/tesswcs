@@ -83,6 +83,8 @@ def _load_wcs_database():
                     ],
                     "crval0": wcs_dict[sector][camera][ccd]["crval0"],
                     "crpix0": wcs_dict[sector][camera][ccd]["crpix0"],
+                    "crval_hdr": wcs_dict[sector][camera][ccd]["crval_hdr"],
+                    "crpix_hdr": wcs_dict[sector][camera][ccd]["crpix_hdr"],
                     "cd": np.asarray(wcs_dict[sector][camera][ccd]["cd"]),
                     "sip_a_order": wcs_dict[sector][camera][ccd]["sip_a_order"],
                     "sip_a": np.asarray(wcs_dict[sector][camera][ccd]["sip_a"]),
@@ -115,6 +117,25 @@ def _load_wcs_database():
     return _wcs_dicts
 
 
+def _parse_epoch_dict(d):
+    """Parses a nested dict which may either be epoch-indexed [epoch][cam][ccd]
+    or legacy [cam][ccd]. Returns integer-keyed [epoch][cam][ccd].
+    """
+    first_val = next(iter(d.values()))
+    if isinstance(first_val, dict) and isinstance(next(iter(first_val.values())), dict):
+        # 3 levels: epoch -> cam -> ccd
+        return {
+            int(epoch): {
+                int(cam): _fix_keys(ccd_dict) for cam, ccd_dict in cam_dict.items()
+            }
+            for epoch, cam_dict in d.items()
+        }
+    else:
+        # Legacy 2 levels: cam -> ccd -> wrap in epoch 1
+        legacy = {int(cam): _fix_keys(ccd_dict) for cam, ccd_dict in d.items()}
+        return {1: legacy}
+
+
 def _load_support_dicts():
     log.debug("Loading support dictionaries from file")
 
@@ -124,16 +145,18 @@ def _load_support_dicts():
         filename = f"{PACKAGEDIR}/data/TESS_wcs_{var}.json.bz2"
         with bz2.open(filename, "rt", encoding="utf-8") as f:
             support_dict = json.load(f)
-        support_dict = {int(key): _fix_keys(dict) for key, dict in support_dict.items()}
+        if var in ["xcent", "ycent"]:
+            support_dict = _parse_epoch_dict(support_dict)
+        else:
+            support_dict = {
+                int(key): _fix_keys(dict) for key, dict in support_dict.items()
+            }
         support_dicts.append(support_dict)
 
     filename = f"{PACKAGEDIR}/data/TESS_wcs_sip.json.bz2"
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         sip = json.load(f)
-    sip_dict = {
-        key: _fix_keys({int(key): _fix_keys(dict) for key, dict in sip_dict.items()})
-        for key, sip_dict in sip.items()
-    }
+    sip_dict = {attr: _parse_epoch_dict(attr_dict) for attr, attr_dict in sip.items()}
     support_dicts.append(sip_dict)
     return support_dicts
 
@@ -142,22 +165,22 @@ def _load_warp_matrices():
     log.debug("Loading warp matrices dictionary from file")
     filename = f"{PACKAGEDIR}/data/TESS_wcs_Ms.json.bz2"
     if not os.path.isfile(filename):
-        log.warn(
+        log.warning(
             "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
         )
         return None, None
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         Ms = json.load(f)
-    Ms = {int(key): _fix_keys(dict) for key, dict in Ms.items()}
+    Ms = _parse_epoch_dict(Ms)
     filename = f"{PACKAGEDIR}/data/TESS_wcs_offset_weights.json.bz2"
     if not os.path.isfile(filename):
-        log.warn(
+        log.warning(
             "No warp matrices found. Either download them or fit them using `tesswcs.tesswcs._build_warp_matrices`"
         )
         return None, None
     with bz2.open(filename, "rt", encoding="utf-8") as f:
         offset_weights = json.load(f)
-    offset_weights = {int(key): _fix_keys(dict) for key, dict in offset_weights.items()}
+    offset_weights = _parse_epoch_dict(offset_weights)
     return Ms, offset_weights
 
 
