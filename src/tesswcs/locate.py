@@ -42,9 +42,9 @@ def _process_input_parameters(coords, sector=None, cycle=None, time=None):
             # Regular sector data does not exist during these times.
             sector_mask = (pointings["Sector"] > 1750) & sector_mask
     elif sector is not None:
-        sector_mask = np.in1d(pointings["Sector"], sector)
+        sector_mask = np.isin(pointings["Sector"], sector).ravel()
     elif cycle is not None:
-        sector_mask = np.in1d(pointings["Cycle"], cycle)
+        sector_mask = np.isin(pointings["Cycle"], cycle).ravel()
 
     if sector_mask.sum() == 0:
         raise ValueError(
